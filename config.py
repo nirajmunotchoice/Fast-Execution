@@ -1,0 +1,11 @@
+username = "M04223"
+sessionidpath = "Z:/Execution_Requirements/TodaySessionId.csv"
+jiffy_scriptmaster = "Z:/Execution_Requirements/tokensdf.csv"
+redis_host = "192.168.3.86"
+redis_port = 6381
+sql_host = "localhost"
+sql_port = 3306
+sql_database = "test_struct"
+sql_user = "root"
+sql_password = "Choice@123"
+trading_exchange = ["NSEFO"] #['MCX', "NCDEX", "NSECDS", "NSEFO"]
