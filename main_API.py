@@ -36,8 +36,8 @@ def placeorder():
         return {"error" : True, "data" : [], "status" : "Wrong strategy name"}
     
     strategydata = strategydata[0]
-    qty = strategydata['qty'] if not data['qty'] else data['qty']
-    splt = strategydata['freezequantity'] if not data['split_qty'] else data['split_qty']
+    qty = strategydata['qty'] if data.get("qty") == None or data.get("qty") == False else data['qty']
+    splt = strategydata['freezequantity'] if data.get('split_qty') == None or data.get('split_qty') == False else data['split_qty']
     refno = rts.incr()
     orderdict = {
         "reftag" : refno,
@@ -50,32 +50,111 @@ def placeorder():
         "price" : Ex.get_ltp(data['token'])['ltp'] if not data['price'] else data['price'],
         "is_forward" : True if strategydata['execution_type'] == "Forward" else False, 
         "exchange" : strategydata['exchange'], 
-        "reason" : "" if not data['reason'] else data['reason']
+        "reason" : "" if data.get('reason') == None or data.get('reason') == False else data['reason']
         }
     print(orderdict)
     
     t1 = threading.Thread(target = lambda : Ex.singleorder(orderdict)).start()
     return {"error" : False, "data" : [refno], "status" : "Order placed successfully."}
 
-    # try: 
-    #     data = request.json
-    #     strategy = data['strategyname']
-    #     # logger.debug(f"Received API call for Order Placement in {strategy}.")
-    #     if strategy in sqoff : 
-    #         return {"error" : True, "data" : [], "status" : "Strategy is already squared off."}
-    #     if strategy in cx.strategies : 
-    #         stdetails = cx.strategies_config[strategy]
-    #         is_forward = True if stdetails['execution_type'] == "Forward" else False 
-    #         t1 = threading.Thread(target = lambda : om.place_order(strategy, data['token'], data['transactiontype'], stdetails['qty'], data['price'], stdetails['product_type'], is_forward = is_forward, reason = data['reason'])).start()
-    #         return {"error" : False, "data" : [{'filled_at' :om.get_ltp(data['token']) }], "status" : "Order executed successfully."}
-    #     else : 
-    #         logger.debug("Error  : Strategy name is not defined.")
-    #         return {"error" : True, "data": [], "status": "Strategy name not defined."}  
-    #     return data
-    # except Exception as e :
-    #     print(e)
-    #     return {"error":True, "data" : [], "status" : str(e)} 
+@app.route("/addstrategy", methods = ['POST'])
+def addstrategy(): 
+    try: 
+        data = request.json
+        strategy = data['strategyname']
+        d = sq.viewone(strategy)
+        if d != [] : 
+            raise Exception("Strategy Already Exists")
+
+        # sq.add_strategy(strategy, exectype, quantity, product_type) 
+        sq.add_strategy(strategy, data['exectype'], data['quantity'], data['product_type'], freezequantity = data.get('freezequantity'), 
+                        symbol = data.get('symbol'), grouptag = data.get('grouptag'), exchange = data.get('exchange'))
+        
+        return {"error":False, "data" : [], "status" : "Strategy Added"} 
+    except Exception as e:
+        return {"error":True, "data" : [], "status" : str(e)} 
+
+@app.route("/updatestrategy", methods = ['POST'])
+def updatestrategy(): 
+    try:  
+        data = request.json
+        strategy = data['strategyname']
+        d = sq.viewone(strategy)
+        if d == [] :
+            raise Exception( "Strategy doesnt exist")
+        
+        sq.update_strategy(strategy, exectype = data.get('exectype'), quantity = data.get('quantity'), product_type = data.get('product_type'), freezequantity = data.get('freezequantity'), 
+                           symbol = data.get('symbol'), grouptag = data.get('grouptag'), exchange = data.get('exchange'))
+        
+        return {"error":False, "data" : [], "status" : "Strategy Updated"} 
+    except Exception as e: 
+        return {"error":True, "data" : [], "status" : str(e)} 
+    
+    
+@app.route("/getstrategy", methods = ['GET'])
+def get_strategies():
+    try: 
+        stname = request.json['strategyname']
+        data = sq.viewone(stname)
+        if data == [] :
+            raise Exception( "Strategy doesnt exist")
+        return {"error":False, "data" : data, "status" : "Data Received"} 
+    except Exception as e : 
+        return {"error":True, "data" : [], "status" : str(e)} 
+
+@app.route("/allstrategies", methods = ['GET'])
+def allstrategies():
+    try: 
+        return {"error":False, "data" : sq.viewall(), "status" : "Data Received"} 
+    except Exception as e : 
+        return {"error":True, "data" : [], "status" : str(e)} 
+
+@app.route("/api/lastupdate/<token>")
+def get_last_data(token):
+    try: 
+        a = Ex.get_ltp(token)
+        return {"Success" : True, "Data" : a, "Error": False}
+    except Exception as e : 
+        return {"Success" : False, "Error" : str(e)}
+
+@app.route("/api/orderbook")
+def get_orderbook(): 
+    try : 
+        return {"Success" : True, "Data" : Ex.get_orderbook(), "Error" : False}
+    except  Exception as e : 
+        return {"Success" : False, "Data" : [], "Error" : str(e)}
+
+@app.route("/api/tradebook")
+def get_tradebook(): 
+    try : 
+        return {"Success" : True, "Data" : Ex.get_tradebook(), "Error" : False}
+    except  Exception as e : 
+        return {"Success" : False, "Data" : [], "Error" : str(e)}
+
+@app.route("/api/netposition")
+def get_netpositions(): 
+    try : 
+        return {"Success" : True, "Data" : Ex.get_netpositions(), "Error" : False}
+    except  Exception as e : 
+        return {"Success" : False, "Data" : [], "Error" : str(e)}
+    
+def stop_trade_recon(self):
+    Ex.trades_process = False
+
+def start_trade_recon(self):
+    Ex.trades_process = True
+    t1 = threading.Thread(target = Ex.trade_reconcile).start()
+    
+def active_order_threads(self):
+    return Ex.recon_threads
+
+def stop_recon_threads(self, reftag):
+    Ex.recon_threads[reftag]['is_running'] = False
+
     
     
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5003)
+
+
+

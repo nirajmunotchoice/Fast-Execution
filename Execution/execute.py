@@ -31,6 +31,9 @@ class Execution():
         self.tokendf = self.tokendf[['Token', 'Segment', "Exchange", "SecDesc"]]
         self.tokendf[['Token', 'Segment']] = self.tokendf[['Token', 'Segment']].astype(int)
         self.tokendf = self.tokendf.set_index('Token')
+        self.recon_threads = {}
+        self.trades_process = True
+        t1 = threading.Thread(target = self.trade_reconcile).start()
         
     def get_orderbook(self):
         ob = self.r.get(config.username + "_ob")
@@ -38,6 +41,10 @@ class Execution():
     
     def get_tradebook(self):
         tb = self.r.get(config.username + "_tb")
+        return ast.literal_eval(tb.decode())
+    
+    def get_netpositions(self):
+        tb = self.r.get(config.username + "_np")
         return ast.literal_eval(tb.decode())
     
     def get_ltp(self,token):
@@ -117,14 +124,12 @@ class Execution():
             print("Error in placing order", e)
             return None
 
-    def trade_push(self):
-        pass
-    
     def _order_exec_confirmation(self, orderdetails, orderids):
-        _exec = False
+        self.recon_threads[orderdetails['reftag']] = {"reftag" : orderdetails['reftag'], "is_running" : True}
+        # _exec = False
         done_ords = []
         execlst = []
-        while not _exec:
+        while self.recon_threads[orderdetails['reftag']]['is_running'] :
             ob = self.get_orderbook()
             for i in orderids: 
                 if i not in done_ords : 
@@ -143,16 +148,16 @@ class Execution():
                         self.sq.update_order(orderdetails['reftag'], orderdetails['strategyname'], i,symbol = orderdetails['symbol'], orderstatus = "NOT FOUND")
                 
             if len(done_ords) == len(orderids):
-                _exec = True
+                self.recon_threads[orderdetails['reftag']]['is_running'] = False
             time.sleep(0.5)
         
         orderstat = "FAILED" if len(execlst) == 0 else "PARTIAL" if len(execlst) != len(orderids) else "EXECUTED" if len(execlst) == len(orderids) else None
-        
+        orderstat = "PARTIAL" if (sum(execlst) != orderdetails['qty']) and (orderstat == "EXECUTED") else orderstat
         c = self.sq.update_position(orderdetails['reftag'], orderdetails['strategyname'], orderdetails['token'], orderstatus = orderstat, traded_qty = sum(execlst),
                              traded_price = None, is_exec = 0 if orderstat == "FAILED" else 1, is_recon = 0, is_sqoff = 0, is_forward = 0
                              ,exec_orders = len(execlst))
         print(c)
-    
+     
     def singleorder(self, orderdict):
         orderids = []
         
@@ -166,6 +171,7 @@ class Execution():
                                   transactiontype = orderval['transactiontype'], req_qty = orderval['qty'], exec_qty = 0, 
                                   symbol = None, is_done = 0, is_exec = 0, placed_at = None, recon_at = None, order_desc = None
                                   , is_traded = 0, requested_price = orderval['price'], traded_price = None, traded_at = None))
+                
         threads = []
         if not orderdict['is_forward']:
             if not orderdict['to_split']:
@@ -206,18 +212,18 @@ class Execution():
                 i.join()
                 
             orderdict['symbol'] = self.get_symbol(orderdict['token'], orderdict['exchange'])
-            print(self.sq.add_position(orderdict['reftag'], orderdict['strategyname'], orderdict['token'], tm = datetime.datetime.now(), 
-                                 symbol = orderdict['symbol'], price = orderdict['price'], traded_price = None, positiontype = orderdict['transactiontype'], 
-                                 qty = orderdict['qty'], traded_qty = None, orderstatus = None, is_exec = 0, is_recon = 0, is_sqoff = 0, is_forward = 0, sent_orders = len(orderids)
-                                 ,exec_orders = None))
+            
             orderids = [i for i in orderids if i != None]
             if orderids != [] : 
                 t1 = threading.Thread(target = lambda : self._order_exec_confirmation(orderdict, orderids)).start()
+                print(self.sq.add_position(orderdict['reftag'], orderdict['strategyname'], orderdict['token'], tm = datetime.datetime.now(), 
+                                      symbol = orderdict['symbol'], price = orderdict['price'], traded_price = None, positiontype = orderdict['transactiontype'], 
+                                      qty = orderdict['qty'], traded_qty = None, orderstatus = "PLACED", is_exec = 0, is_recon = 0, is_sqoff = 0, is_forward = 0, sent_orders = len(orderids)
+                                      ,exec_orders = None))
             
             return orderdict, orderids
     
         else:
-            print("FOrward")
             ltp = self.get_ltp(orderdict['token'])['ltp']
             orderdict['symbol'] = self.get_symbol(orderdict['token'], orderdict['exchange'])
             self.sq.add_position(orderdict['reftag'], orderdict['strategyname'], orderdict['token'], tm = datetime.datetime.now(), 
@@ -229,18 +235,55 @@ class Execution():
         pass
     
     def trade_reconcile(self):
-        x = self.sq.unrecon_positions()
-        if x != [] : 
-            tb = self.get_tradebook()
-            x = pd.DataFrame(x)
-            g = x.groupby("refno")
-            for i in g.groups.keys():
-                n = g.get_group(i)
-                a = self.get_traded_price(tb, n['orderid'].to_list(), n['token'].iloc[0])
-                if a['is_found']:
-                    is_recon = 1 if a['data']['tradedqty'] == sum(n['exec_qty']) else 0 
-                    self.sq.update_position(i, n['strategyname'].iloc[0], n['token'].iloc[0], traded_price = a['data']['tradedprice'], is_recon = is_recon)
-        time.sleep(0.5)
+        while self.trades_process : 
+            try : 
+                x = self.sq.unrecon_positions()
+                if x != [] : 
+                    tb = self.get_tradebook()
+                    x = pd.DataFrame(x)
+                    g = x.groupby("refno")
+                    for i in g.groups.keys():
+                        n = g.get_group(i)
+                        a = self.get_traded_price(tb, n['orderid'].to_list(), n['token'].iloc[0])
+                        if a['is_found']:
+                            is_recon = 1 if a['data']['tradedqty'] == sum(n['exec_qty']) else 0 
+                            self.sq.update_position(i, n['strategyname'].iloc[0], n['token'].iloc[0], traded_price = a['data']['tradedprice'], is_recon = is_recon)
+                time.sleep(0.5)
+            except Exception as e : 
+                print("Trade Reconcile Exception", str(e))
+    
+    def openposition(self, strategyname):
+        pass
+    
+    def strategy_Netpositions(self, strategyname):
+        pass
+    
+    def dependent_execution(self, strategyname):
+        pass
+    
+    def squareoff(self, strategyname):
+        pass
+    
+    def trade_push(self):
+        pass
+    
+# =============================================================================
+# DEPENDENT ORDERS
+# orderdict = {
+#     "reftag" : [1236,1237],
+#     "token" : [48716, 48717],
+#     "qty" : 75,
+#     "price" : 44,
+#     "exchange" : "NSEFO",
+#     "to_split" : True,
+#     "split_qty" : 25,
+#     "strategyname" : "test_NF",
+#     "transactiontype" : "sell",
+#     "is_forward" : False,
+#     "reason" : None,
+#     } 
+# =============================================================================
+
 # =============================================================================
 # orderdict = {
 #     "reftag",

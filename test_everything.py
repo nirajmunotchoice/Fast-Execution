@@ -6,7 +6,8 @@ Created on Wed Feb 22 10:47:50 2023
 """
 
 from sql_manager.sql_control import Manage_strategies
-
+import datetime
+import pandas as pd 
 sq = Manage_strategies()
 
 sq.add_position(12345, "test_NF", 48716, tm = datetime.datetime.now(), symbol = None, price = None, traded_price = None, positiontype = None, qty = None, traded_qty = None, orderstatus = None, is_exec = None, is_recon = None, is_sqoff = None, is_forward = None, sent_orders = None,exec_orders = None)
@@ -16,8 +17,8 @@ c = sq.get_orderids(1236, "test_NF", 48716)
 
 a = sq._reader(f"""SELECT {sq.positions}.refno, {sq.orderbook}.orderid, {sq.positions}.strategyname, {sq.positions}.token, {sq.orderbook}.is_exec FROM {sq.orderbook} INNER JOIN {sq.positions} ON {sq.positions}.refno = {sq.orderbook}.refno WHERE {sq.positions}.is_exec = '1' AND {sq.positions}.is_recon = '0' """)
 
-break
-sq.add_strategy("test_NF", "Forward", 100, "Delivery", grouptag= "test")
+# break
+# sq.add_strategy("test_NF", "Forward", 100, "Delivery", grouptag= "test")
 
 sq.update_strategy("test_NF", quantity= 55, grouptag = "test1", exchange="NSEFO")
 sq.remove_strategy("test_NF")
@@ -143,6 +144,7 @@ vc = pd.DataFrame(sq.get_positions(strategyname))
 vc['traded_qty'] = vc.apply(lambda row : row['traded_qty'] * -1 if row['positiontype'] == "sell" else row['traded_qty'], axis = 1)
 g = vc.groupby("token").agg({"traded_qty" : "sum", "token" : "last", "symbol" : "last", "strategyname" : "last"})
 
+
 x = sq.unrecon_positions()
 x = pd.DataFrame(x)
 g = x.groupby("refno")
@@ -152,4 +154,112 @@ for i in g.groups.keys():
     if a['is_found']:
         is_recon = 1 if a['data']['tradedqty'] == sum(n['exec_qty']) else 0 
         sq.update_position(i, n['strategyname'].iloc[0], n['token'].iloc[0], traded_price = a['data']['tradedprice'], traded_qty = a['data']['tradedqty'], is_recon = is_recon)
-            
+
+trades = pd.DataFrame()
+x = sq.get_positions("test_NF")
+df = pd.DataFrame(x)
+g = df.groupby("token")
+
+for i in g.groups.keys():
+    n = g.get_group(i)
+    n['tm'] = pd.to_datetime(n['tm'])
+    n = n.sort_values(by = ['tm'])
+    n = n.append(n)
+    n = n.reset_index(drop = True, inplace = False)
+    n.at[4, "refno"] = 2809
+    n.at[5, "refno"] = 2810
+    n.at[6, "refno"] = 2811
+    n.at[7, "refno"] = 2812
+    n = n.set_index("refno") 
+    n.at[2805, "qty"] = 200
+    n.at[2806, "qty"] = 100
+    vnnn = n.copy(deep = True)
+    # for na in range(len(n)) :
+    unchanged = False
+    while not unchanged and not n.empty: 
+        v = n.iloc[0]
+        postype = v['positiontype']
+        qty = v['qty']
+        td = {"entryprice" : v['price'], "token" : v['token'], "entrytime" : v['tm']}
+        xn = n[(n.index != v.name) & (n['positiontype'] != postype)]
+        print(qty)
+        ch = False
+        xa = 0
+        for xa in range(len(xn)):
+            if qty != 0 :
+                vxz = xn.iloc[xa]
+                td['exittime'] = vxz['tm']
+                td['exitprice'] = vxz['price']
+                if qty == vxz['qty']:
+                    td['qty'] = qty
+                    qty = 0
+                    n.drop([v.name, vxz.name], axis = 0, inplace = True)
+                    
+                elif qty > vxz['qty']:
+                    td['qty'] = vxz['qty']
+                    qty = qty - vxz['qty']
+                    n.at[v.name, "qty"] = qty
+                    n.drop([vxz.name], axis = 0, inplace = True)
+                    
+                elif qty < vxz['qty']:
+                    n.at[vxz.name, "qty"] = vxz['qty'] - qty
+                    n.drop([v.name], axis = 0, inplace = True)
+                    qty = 0
+                print(qty)
+                ch = True
+                trades = trades.append(td, ignore_index= True)
+        unchanged = True if ch == False else unchanged
+        time.sleep(0.5)
+
+n = n.append(n)
+n = n.reset_index()
+n.at[2, "refno"] = 2801
+n.at[3, "refno"] = 2802
+n = n.set_index("refno")
+n.at[2801, "positiontype"] = "sell"
+n.at[2802, "positiontype"] = "sell"
+vnnn['qty'] = vnnn.apply(lambda row : row['qty'] * -1 if row['positiontype'] == "sell" else row['qty'], axis = 1)
+g1 = vnnn.groupby("token").agg({"qty" : "sum", "token" : "last", "symbol" : "last", "strategyname" : "last"})
+
+# =============================================================================
+# GET AVERAGE OF TRADES
+# =============================================================================
+
+
+trades = pd.DataFrame()
+x = sq.get_positions("test_NF")
+df = pd.DataFrame(x)
+df = df.iloc[1:]
+g = df.groupby("token")
+td = {}
+
+for i in g.groups.keys():
+    n = g.get_group(i)
+    buytrades = n[n['positiontype'] == "buy"]
+    selltrades = n[n['positiontype'] == "sell"]
+    buyavg = 0 if buytrades.empty else round(sum(buytrades['traded_price'] * buytrades['traded_qty']) / sum(buytrades['traded_qty']), 5)
+    sellavg = 0 if selltrades.empty else round(sum(selltrades['traded_price'] * selltrades['traded_qty']) / sum(selltrades['traded_qty']), 5)
+    buyqty = 0 if buytrades.empty else sum(buytrades['traded_qty'])
+    sellqty = 0 if selltrades.empty else sum(selltrades['traded_qty'])
+    ltp = 27.1000 #USE GET LTP HERE
+    if buyqty > sellqty:
+        bookedpnl = (sellavg - buyavg) * sellqty
+        remainingqty = buyqty - sellqty
+        openpnl = (ltp - buyavg) * remainingqty
+    
+    elif sellqty > buyqty:
+        bookedpnl = (sellavg - buyavg) * buyqty
+        remainingqty = sellqty - buyqty
+        openpnl = (sellavg - ltp) * remainingqty
+    
+    elif buyqty == sellqty:
+        bookedpnl = (sellavg - buyavg) * buyqty
+        remainingqty = 0
+        openpnl = 0 #(sellavg - buyqty) * remainingqty
+    
+    td[i] = {"token" : i,"buyavgprice" : buyavg, "buyqty" : buyqty, "ltp" : ltp, "remainingqty" : remainingqty, "sellavgprice" : sellavg, 
+             "sellqty" : sellqty, "bookedpnl" : bookedpnl, "openpnl" : openpnl, "totalpnl" : bookedpnl + openpnl}
+    
+    # td[i] = {'buyaverage' : sum(buytrades['traded_price'] * buytrades['traded_qty']) , "buyqty" : }
+    # n1 = n.groupby('token')   
+
