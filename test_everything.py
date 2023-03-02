@@ -10,14 +10,16 @@ import datetime
 import pandas as pd 
 sq = Manage_strategies()
 
-sq.add_position(12345, "test_NF", 48716, tm = datetime.datetime.now(), symbol = None, price = None, traded_price = None, positiontype = None, qty = None, traded_qty = None, orderstatus = None, is_exec = None, is_recon = None, is_sqoff = None, is_forward = None, sent_orders = None,exec_orders = None)
-sq.update_position(1235, "test_NF", 48716, tm = datetime.datetime.now())
-v = sq.get_positions()
-c = sq.get_orderids(1236, "test_NF", 48716)
+# sq.add_position(12345, "test_NF", 48716, tm = datetime.datetime.now(), symbol = None, price = None, traded_price = None, positiontype = None, qty = None, traded_qty = None, orderstatus = None, is_exec = None, is_recon = None, is_sqoff = None, is_forward = None, sent_orders = None,exec_orders = None)
+# sq.update_position(1235, "test_NF", 48716, tm = datetime.datetime.now())
+# v = sq.get_positions()
+# c = sq.get_orderids(1236, "test_NF", 48716)
 
 a = sq._reader(f"""SELECT {sq.positions}.refno, {sq.orderbook}.orderid, {sq.positions}.strategyname, {sq.positions}.token, {sq.orderbook}.is_exec FROM {sq.orderbook} INNER JOIN {sq.positions} ON {sq.positions}.refno = {sq.orderbook}.refno WHERE {sq.positions}.is_exec = '1' AND {sq.positions}.is_recon = '0' """)
+a = sq.orderswithissues()
+b = sq.positionswithissues()
 
-# break
+break
 # sq.add_strategy("test_NF", "Forward", 100, "Delivery", grouptag= "test")
 
 sq.update_strategy("test_NF", quantity= 55, grouptag = "test1", exchange="NSEFO")
@@ -45,16 +47,37 @@ sq.update_order(12345, "test_NF", 222, is_exec = 0)
 
 from Execution.execute import Execution
 ex = Execution()
+ex.trades_process = False
 ex.get_ltp(26009)
 
 orderdict = {
-    "reftag" : 1236,
-    "token" : 48716,
+    "reftag" : [1012, 1013],
+    "token" : [48739, 48732],
     "qty" : 75,
-    "price" : 44,
+    "price" : [4, 7],
     "exchange" : "NSEFO",
     "to_split" : True,
-    "split_qty" : 25,
+    "split_qty" : 50,
+    "strategyname" : "test_NF",
+    "transactiontype" : ["sell", "sell"],
+    "is_forward" : False,
+    "reason" : None,
+    }
+
+import time
+st = time.time()
+v = ex.dependent_execution(orderdict)
+ed = time.time()
+print(ed - st)
+
+orderdict = {
+    "reftag" : 1007,
+    "token" : 48739,
+    "qty" : 25,
+    "price" : 4,
+    "exchange" : "NSEFO",
+    "to_split" : False,
+    "split_qty" : False,
     "strategyname" : "test_NF",
     "transactiontype" : "sell",
     "is_forward" : False,
@@ -141,8 +164,13 @@ print(ed-st, f)
 
 strategyname = "test_NF"
 vc = pd.DataFrame(sq.get_positions(strategyname))
-vc['traded_qty'] = vc.apply(lambda row : row['traded_qty'] * -1 if row['positiontype'] == "sell" else row['traded_qty'], axis = 1)
-g = vc.groupby("token").agg({"traded_qty" : "sum", "token" : "last", "symbol" : "last", "strategyname" : "last"})
+vc['traded_qty'] = vc.apply(lambda row : row['traded_qty'] * -1 if row['positiontype'] == "sell" else row['traded_qty'], axis = 1) 
+g = vc.groupby("token").agg({"traded_qty" : "sum", "symbol" : "last", "strategyname" : "last"})
+g = g.reset_index()
+td = []
+for i in range(len(g)): 
+    if g.iloc[i]['traded_qty'] != 0 : 
+       td.append({"token" : g.iloc[i]['token'], "qty" : g.iloc[i]['traded_qty'], "strategyname" : g.iloc[i]['strategyname'], "symbol" : g.iloc[i]['symbol']}) 
 
 
 x = sq.unrecon_positions()
@@ -164,15 +192,15 @@ for i in g.groups.keys():
     n = g.get_group(i)
     n['tm'] = pd.to_datetime(n['tm'])
     n = n.sort_values(by = ['tm'])
-    n = n.append(n)
+    # n = n.append(n)
     n = n.reset_index(drop = True, inplace = False)
-    n.at[4, "refno"] = 2809
-    n.at[5, "refno"] = 2810
-    n.at[6, "refno"] = 2811
-    n.at[7, "refno"] = 2812
-    n = n.set_index("refno") 
-    n.at[2805, "qty"] = 200
-    n.at[2806, "qty"] = 100
+    # n.at[4, "refno"] = 2809
+    # n.at[5, "refno"] = 2810
+    # n.at[6, "refno"] = 2811
+    # n.at[7, "refno"] = 2812
+    # n = n.set_index("refno") 
+    # n.at[2805, "qty"] = 200
+    # n.at[2806, "qty"] = 100
     vnnn = n.copy(deep = True)
     # for na in range(len(n)) :
     unchanged = False
@@ -204,6 +232,7 @@ for i in g.groups.keys():
                 elif qty < vxz['qty']:
                     n.at[vxz.name, "qty"] = vxz['qty'] - qty
                     n.drop([v.name], axis = 0, inplace = True)
+                    td['qty'] = qty
                     qty = 0
                 print(qty)
                 ch = True
@@ -218,15 +247,15 @@ n.at[3, "refno"] = 2802
 n = n.set_index("refno")
 n.at[2801, "positiontype"] = "sell"
 n.at[2802, "positiontype"] = "sell"
-vnnn['qty'] = vnnn.apply(lambda row : row['qty'] * -1 if row['positiontype'] == "sell" else row['qty'], axis = 1)
-g1 = vnnn.groupby("token").agg({"qty" : "sum", "token" : "last", "symbol" : "last", "strategyname" : "last"})
+vnnn['traded_qty'] = vnnn.apply(lambda row : row['traded_qty'] * -1 if row['positiontype'] == "sell" else row['traded_qty'], axis = 1) 
+g1 = vnnn.groupby("token").agg({"traded_qty" : "sum", "token" : "last", "symbol" : "last", "strategyname" : "last"})
 
 # =============================================================================
 # GET AVERAGE OF TRADES
 # =============================================================================
 
 
-trades = pd.DataFrame()
+trades = pd.DataFrame(td)
 x = sq.get_positions("test_NF")
 df = pd.DataFrame(x)
 df = df.iloc[1:]
@@ -237,11 +266,11 @@ for i in g.groups.keys():
     n = g.get_group(i)
     buytrades = n[n['positiontype'] == "buy"]
     selltrades = n[n['positiontype'] == "sell"]
-    buyavg = 0 if buytrades.empty else round(sum(buytrades['traded_price'] * buytrades['traded_qty']) / sum(buytrades['traded_qty']), 5)
+    buyavg =  0 if buytrades.empty else round(sum(buytrades['traded_price'] * buytrades['traded_qty']) / sum(buytrades['traded_qty']), 5)
     sellavg = 0 if selltrades.empty else round(sum(selltrades['traded_price'] * selltrades['traded_qty']) / sum(selltrades['traded_qty']), 5)
     buyqty = 0 if buytrades.empty else sum(buytrades['traded_qty'])
     sellqty = 0 if selltrades.empty else sum(selltrades['traded_qty'])
-    ltp = 27.1000 #USE GET LTP HERE
+    ltp = 6.05 #USE GET LTP HERE
     if buyqty > sellqty:
         bookedpnl = (sellavg - buyavg) * sellqty
         remainingqty = buyqty - sellqty
@@ -259,7 +288,7 @@ for i in g.groups.keys():
     
     td[i] = {"token" : i,"buyavgprice" : buyavg, "buyqty" : buyqty, "ltp" : ltp, "remainingqty" : remainingqty, "sellavgprice" : sellavg, 
              "sellqty" : sellqty, "bookedpnl" : bookedpnl, "openpnl" : openpnl, "totalpnl" : bookedpnl + openpnl}
-    
+        
     # td[i] = {'buyaverage' : sum(buytrades['traded_price'] * buytrades['traded_qty']) , "buyqty" : }
     # n1 = n.groupby('token')   
 

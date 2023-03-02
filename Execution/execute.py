@@ -171,6 +171,10 @@ class Execution():
                                   transactiontype = orderval['transactiontype'], req_qty = orderval['qty'], exec_qty = 0, 
                                   symbol = None, is_done = 0, is_exec = 0, placed_at = None, recon_at = None, order_desc = None
                                   , is_traded = 0, requested_price = orderval['price'], traded_price = None, traded_at = None))
+            else: 
+                # GIVE ALERT 
+                # ADD TO LOG
+                pass
                 
         threads = []
         if not orderdict['is_forward']:
@@ -253,36 +257,196 @@ class Execution():
                 print("Trade Reconcile Exception", str(e))
     
     def openposition(self, strategyname):
-        pass
-    
-    def strategy_Netpositions(self, strategyname):
-        pass
-    
-    def dependent_execution(self, strategyname):
-        pass
-    
-    def squareoff(self, strategyname):
-        pass
+        v = self.sq.get_positions(strategyname)
+        if v == [] :
+            return []
+        vc = pd.DataFrame(v)
+        vc['traded_qty'] = vc.apply(lambda row : row['traded_qty'] * -1 if row['positiontype'] == "sell" else row['traded_qty'], axis = 1)
+        g = vc.groupby("token").agg({"traded_qty" : "sum", "symbol" : "last", "strategyname" : "last"})
+        g = g.reset_index()
+        g = g.sort_values(by = ['traded_qty'])
+        td = []
+        for i in range(len(g)): 
+            if g.iloc[i]['traded_qty'] != 0 : 
+               td.append({"token" : int(g.iloc[i]['token']), "qty" : int(g.iloc[i]['traded_qty']), "strategyname" : g.iloc[i]['strategyname'], "symbol" : g.iloc[i]['symbol']}) 
+        return td
+     
+    def stnetpositions(self, strategyname, getall = False):
+        if not getall : 
+            x = self.sq.get_positions(strategyname)
+        else : 
+            x = self.sq.get_allexecpositions()
+        
+        if x == []:
+            return []
+        
+        df = pd.DataFrame(x)
+        g = df.groupby("token")
+        td = {}
+        for i in g.groups.keys():
+            n = g.get_group(i)
+            buytrades = n[n['positiontype'] == "buy"]
+            selltrades = n[n['positiontype'] == "sell"]
+            buyavg =  0 if buytrades.empty else round(sum(buytrades['traded_price'] * buytrades['traded_qty']) / sum(buytrades['traded_qty']), 5)
+            sellavg = 0 if selltrades.empty else round(sum(selltrades['traded_price'] * selltrades['traded_qty']) / sum(selltrades['traded_qty']), 5)
+            buyqty = 0 if buytrades.empty else sum(buytrades['traded_qty'])
+            sellqty = 0 if selltrades.empty else sum(selltrades['traded_qty'])
+
+            try : 
+                ltp = self.get_ltp(i)['ltp'] #USE GET LTP HERE
+            except : 
+                ltp = 0
+
+            if buyqty > sellqty:
+                bookedpnl = (sellavg - buyavg) * sellqty
+                remainingqty = buyqty - sellqty
+                openpnl = (ltp - buyavg) * remainingqty
+            
+            elif sellqty > buyqty:
+                bookedpnl = (sellavg - buyavg) * buyqty
+                remainingqty = sellqty - buyqty
+                openpnl = (sellavg - ltp) * remainingqty
+            
+            elif buyqty == sellqty:
+                bookedpnl = (sellavg - buyavg) * buyqty
+                remainingqty = 0
+                openpnl = 0 #(sellavg - buyqty) * remainingqty
+            
+            td[str(i)] = {"token" : int(i),"buyavgprice" : float(buyavg), "buyqty" : int(buyqty), "ltp" : int(ltp), "remainingqty" : int(remainingqty), "sellavgprice" : float(sellavg), 
+                     "sellqty" : float(sellqty), "bookedpnl" : float(bookedpnl), "openpnl" : float(openpnl), "totalpnl" : float(bookedpnl + openpnl)}
+            
+        totalbooked = sum([td[i]['bookedpnl'] for i in td])
+        totalopen = sum([td[i]['openpnl'] for i in td])
+        total = sum([td[i]['totalpnl'] for i in td])
+        td['total'] = {"token" : "total", "bookedpnl" : float(totalbooked), "openpnl" : float(totalopen), "totalpnl" : float(total)}
+        return td
+        
+    def dependent_execution(self, orderdict):
+        orderids = {}
+        for i in orderdict['reftag']:
+            orderids[i] = []
+            
+        def orderplacement(orderval):
+            for i in range(len(orderval['reftag'])):
+                orderv = {
+                    "reftag" : orderval['reftag'][i],
+                    "price" : orderval['price'][i],
+                    "token" : orderval['token'][i], 
+                    "qty" : orderval['qty'],
+                    "strategyname" : orderval['strategyname'],
+                    "transactiontype" : orderval['transactiontype'][i],
+                    "exchange" : orderval['exchange']
+                    }
+                print("orval",orderv)
+                oid = self.placeorder(orderv)
+                print("oid", oid)
+                orderids[orderv['reftag']].append(oid)
+                if oid != None : 
+                    print(self.sq.add_order(orderv['reftag'], orderv['strategyname'], oid, orderstatus = None, token = orderv['token'], 
+                                      transactiontype = orderv['transactiontype'], req_qty = orderv['qty'], exec_qty = 0, 
+                                      symbol = None, is_done = 0, is_exec = 0, placed_at = None, recon_at = None, order_desc = None
+                                      , is_traded = 0, requested_price = orderv['price'], traded_price = None, traded_at = None))
+                else : 
+                    # GIVE ALERT 
+                    # ADD TO LOG FOR ERROR
+                    pass
+                time.sleep(0.1)
+                
+        threads = []
+        
+        if not orderdict['is_forward']:
+            if not orderdict['to_split']:
+                t1 = threading.Thread(target = lambda : orderplacement(orderdict))
+                threads.append(t1)
+            else: 
+                initqty = orderdict['qty']
+                batches = True
+                while batches : 
+                    if initqty > orderdict['split_qty'] : 
+                        threads.append(threading.Thread(target = lambda : orderplacement({
+                            "reftag" : orderdict['reftag'], 
+                            "price" : orderdict['price'],
+                            "token" : orderdict['token'], 
+                            "qty" : orderdict['split_qty'], 
+                            "strategyname" : orderdict['strategyname'], 
+                            "transactiontype" : orderdict['transactiontype'],
+                            "exchange" : orderdict['exchange']})))
+                        
+                        initqty = initqty - orderdict['split_qty']
+                        
+                    elif initqty <= orderdict['split_qty'] :  
+
+                        threads.append(threading.Thread(target = lambda : orderplacement({
+                            "reftag" : orderdict['reftag'], 
+                            "price" : orderdict['price'],
+                            "token" : orderdict['token'], 
+                            "qty" : copy.deepcopy(initqty), 
+                            "strategyname" : orderdict['strategyname'], 
+                            "transactiontype" : orderdict['transactiontype'],
+                            "exchange" : orderdict['exchange']})))
+                        batches = False                        
+                 
+            for i in threads : 
+                i.start()
+
+            for i in threads:
+                i.join()
+                
+            orderdict['symbol'] = [self.get_symbol(i, orderdict['exchange']) for i in orderdict['token']]
+            for i in range(len(orderdict['reftag'])):
+                orderids[orderdict['reftag'][i]] = [i for i in orderids[orderdict['reftag'][i]] if i != None]
+                if orderids[orderdict['reftag'][i]] != [] : 
+                    orderd = {
+                        "reftag" : orderdict["reftag"][i], 
+                        "token" : orderdict["token"][i],
+                        "qty" : orderdict["qty"],
+                        "price" : orderdict["price"][i],
+                        "exchange" : orderdict["exchange"],
+                        "to_split" : orderdict['to_split'], 
+                        "split_qty" : orderdict['split_qty'], 
+                        "strategyname" : orderdict['strategyname'],
+                        "transactiontype" : orderdict["transactiontype"][i],
+                        "is_forward" : orderdict["is_forward"],
+                        "reason" :  orderdict["reason"],
+                        "symbol" : orderdict['symbol'][i] 
+                        }
+                    print(orderd)
+                    t1 = threading.Thread(target = lambda : self._order_exec_confirmation(orderd, orderids[orderdict['reftag'][i]])).start()
+                    
+                    print(self.sq.add_position(orderd['reftag'], orderd['strategyname'], orderd['token'], tm = datetime.datetime.now(), 
+                                          symbol = orderd['symbol'], price = orderd['price'], traded_price = None, positiontype = orderd['transactiontype'], 
+                                          qty = orderd['qty'], traded_qty = None, orderstatus = "PLACED", is_exec = 0, is_recon = 0, is_sqoff = 0, is_forward = 0, sent_orders = len(orderids[orderdict['reftag'][i]])
+                                          ,exec_orders = None))
+                
+            return orderdict, orderids
     
     def trade_push(self):
         pass
     
+# =============================================================================
+# print("A")
+# "reftag" : orderdict['reftag'], 
+# "price" : orderdict['price'],
+# "token" : orderdict['token'], 
+# "qty" : orderdict['split_qty'], 
+# "strategyname" : orderdict['strategyname'], 
+# "transactiontype" : orderdict['transactiontype'],
+# "exchange" : orderdict['exchange']
 # =============================================================================
 # DEPENDENT ORDERS
 # orderdict = {
 #     "reftag" : [1236,1237],
 #     "token" : [48716, 48717],
 #     "qty" : 75,
-#     "price" : 44,
+#     "price" : [44, 55],
 #     "exchange" : "NSEFO",
 #     "to_split" : True,
 #     "split_qty" : 25,
 #     "strategyname" : "test_NF",
-#     "transactiontype" : "sell",
+#     "transactiontype" : ["buy","sell"],
 #     "is_forward" : False,
 #     "reason" : None,
 #     } 
-# =============================================================================
 
 # =============================================================================
 # orderdict = {

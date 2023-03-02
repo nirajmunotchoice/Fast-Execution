@@ -262,13 +262,42 @@ class Manage_strategies():
 #                        "freezequantity" : i[4], "symbol" : i[5], "grouptag" : i[6], "exchange" : i[7]}
 #         return n
 # =============================================================================
-
+    def orderswithissues(self):
+        a = self._reader(f"""SELECT * FROM {self.orderbook} WHERE orderstatus != 'EXECUTED' OR orderstatus IS NULL""")
+        vals = ["id","refno", "strategyname", "orderid", "orderstatus", "token" , "transactiontype" , "req_qty" , "exec_qty" , "symbol" , "is_done" , "is_exec" , "placed_at", 
+               "recon_at" , "order_desc", "is_traded", "requested_price", "traded_price", "traded_at"]
+        return [{val : i[vals.index(val)] for val in vals} for i in a]
+    
+    def positionswithissues(self):
+        a = self._reader(f"""SELECT * FROM {self.positions} WHERE orderstatus != 'EXECUTED' OR orderstatus IS NULL""")
+        vals = ["refno", "strategyname", "tm", "symbol", "price", "traded_price", "positiontype", "qty", "traded_qty", "token", "orderstatus", "is_exec", "is_recon",
+                        "is_sqoff", "is_forward", "sent_orders", "exec_orders"]
+        return [{val : i[vals.index(val)] for val in vals} for i in a]
+    
     def get_positions(self, strategyname):
-        a = self._reader(f"""SELECT * FROM {self.positions} WHERE strategyname = '{strategyname}'""")
+        a = self._reader(f"""SELECT * FROM {self.positions} WHERE strategyname = '{strategyname}' AND is_exec = '1' AND is_recon = '1'""")
+        vals = ["refno", "strategyname", "tm", "symbol", "price", "traded_price", "positiontype", "qty", "traded_qty", "token", "orderstatus", "is_exec", "is_recon",
+                        "is_sqoff", "is_forward", "sent_orders", "exec_orders"]
+        return [{val : i[vals.index(val)] for val in vals} for i in a]
+    
+    def get_allpositions(self, strategyname):
+        a = self._reader(f"""SELECT * FROM {self.positions} WHERE strategyname = '{strategyname}' AND is_forward = 0""")
         vals = ["refno", "strategyname", "tm", "symbol", "price", "traded_price", "positiontype", "qty", "traded_qty", "token", "orderstatus", "is_exec", "is_recon",
                         "is_sqoff", "is_forward", "sent_orders", "exec_orders"]
         return [{val : i[vals.index(val)] for val in vals} for i in a]
         
+    def get_allexecpositions(self):
+        a = self._reader(f"""SELECT * FROM {self.positions} WHERE is_exec = '1' AND is_recon = '1'""")
+        vals = ["refno", "strategyname", "tm", "symbol", "price", "traded_price", "positiontype", "qty", "traded_qty", "token", "orderstatus", "is_exec", "is_recon",
+                        "is_sqoff", "is_forward", "sent_orders", "exec_orders"]
+        return [{val : i[vals.index(val)] for val in vals} for i in a]
+    
+    def get_orders(self, strategyname):
+        a = self._reader(f"""SELECT * FROM {self.orderbook} WHERE strategyname = '{strategyname}' """)
+        vals = ["id","refno", "strategyname", "orderid", "orderstatus", "token" , "transactiontype" , "req_qty" , "exec_qty" , "symbol" , "is_done" , "is_exec" , "placed_at", 
+               "recon_at" , "order_desc", "is_traded", "requested_price", "traded_price", "traded_at"]
+        return [{val : i[vals.index(val)] for val in vals} for i in a]
+    
     def get_orderids(self, refno, strategyname, token):
         v = self._reader(f"SELECT orderid FROM {self.orderbook} WHERE strategyname = '{strategyname}' AND refno = '{refno}' AND token = '{token}'")
         return v

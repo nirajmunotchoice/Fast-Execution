@@ -1,0 +1,48 @@
+[2023-03-02 17:56:17,363] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon
+DEBUG in main_API: HELLO
+[2023-03-02 18:00:26,359] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon
+DEBUG in main_API: HELLO
+[2023-03-02 18:02:45,750] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon
+DEBUG in main_API: HELLO
+[2023-03-02 18:02:45,750] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon | []:DEBUG in main_API: HELLO
+[2023-03-02 18:04:53,011] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon
+DEBUG in main_API: HELLO
+[2023-03-02 18:04:53,011] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon | []:DEBUG in main_API: HELLO
+[2023-03-02 18:04:53,011] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon | []:DEBUG in main_API: HELLO
+[2023-03-02 18:05:46,454] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon
+DEBUG in main_API: HELLO
+[2023-03-02 18:05:46,454] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon | []:DEBUG in main_API: HELLO
+[2023-03-02 18:05:46,454] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon | []:DEBUG in main_API: HELLO
+[2023-03-02 18:05:46,454] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon | []:DEBUG in main_API: HELLO
+[2023-03-02 18:05:53,355] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon
+DEBUG in main_API: HELLO
+[2023-03-02 18:05:53,355] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon | []:DEBUG in main_API: HELLO
+[2023-03-02 18:05:53,355] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon | []:DEBUG in main_API: HELLO
+[2023-03-02 18:05:53,355] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon | []:DEBUG in main_API: HELLO
+[2023-03-02 18:06:40,400] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon
+DEBUG in main_API: HELLO
+[2023-03-02 18:06:40,400] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon | []:DEBUG in main_API: HELLO
+[2023-03-02 18:06:40,400] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon | []:DEBUG in main_API: HELLO
+[2023-03-02 18:06:40,400] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon | []:DEBUG in main_API: HELLO
+[2023-03-02 18:06:40,400] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon | []:DEBUG in main_API: HELLO
+[2023-03-02 18:08:56,504] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon
+DEBUG in main_API: HELLO
+[2023-03-02 18:08:56,504] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon | []:DEBUG in main_API: HELLO
+[2023-03-02 18:08:56,504] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon | []:DEBUG in main_API: HELLO
+[2023-03-02 18:08:56,504] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon | []:DEBUG in main_API: HELLO
+[2023-03-02 18:08:56,504] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon | []:DEBUG in main_API: HELLO
+[2023-03-02 18:08:56,504] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon | []:DEBUG in main_API: HELLO
+[2023-03-02 18:09:53,824] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon | []:DEBUG in main_API: HELLO
+[2023-03-02 18:09:56,462] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon | []:DEBUG in main_API: HELLO
+[2023-03-02 18:10:09,641] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon | []:DEBUG in main_API: HELLO
+[2023-03-02 18:10:10,841] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon | []:DEBUG in main_API: HELLO
+[2023-03-02 18:10:11,374] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon | []:DEBUG in main_API: HELLO
+[2023-03-02 18:10:11,751] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon | []:DEBUG in main_API: HELLO
+[2023-03-02 18:10:12,107] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon | []:DEBUG in main_API: HELLO
+[2023-03-02 18:10:12,452] 192.168.3.36 requested http://192.168.3.36:5003/stoprecon | []:DEBUG in main_API: HELLO
+[2023-03-02 18:32:33,933] 192.168.3.36 requested http://192.168.3.36:5003/getstrategy | {'strategyname': 'test_S0.5nf1'}: ERROR in main_API: error
+Traceback (most recent call last):
+  File "C:\Users\niraj.munot\Desktop\Codes\Execution_Fast\main_API.py", line 307, in get_strategies
+    raise Exception( "Strategy doesnt exist")
+Exception: Strategy doesnt exist
+[2023-03-02 18:32:43,197] 192.168.3.36 requested http://192.168.3.36:5003/getstrategy | {'strategyname': 'test_NF'}: DEBUG in main_API: get strategy
