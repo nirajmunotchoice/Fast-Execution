@@ -27,14 +27,13 @@ class RequestFormatter(logging.Formatter):
         record.jsonresp = [] if request.headers.get('Content-Type') == None else request.json
         return super().format(record)
 
-
 now = datetime.datetime.now().strftime("%d-%m-%Y")
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 formatter = RequestFormatter(
     '[%(asctime)s] %(remote_addr)s requested %(url)s | %(jsonresp)s: '
-    '%(levelname)s in %(module)s: %(message)s'
-) #logging.Formatter('%(asctime)s:%(levelname)s:%(name)s:%(message)s')
+    '%(levelname)s in %(module)s: %(message)s')
+# logging.Formatter('%(asctime)s:%(levelname)s:%(name)s:%(message)s')
 filehandler = logging.FileHandler('API_{}.log'.format(now))
 filehandler.setFormatter(formatter)
 logger.addHandler(filehandler)
@@ -82,107 +81,123 @@ def placeorder():
         return {"error" : False, "data" : [refno], "status" : "Order placed successfully."}
     except Exception as e : 
         logger.exception("Error")
-        return {"error" : False, "data" : [refno], "status" : str(e)}
+        return {"error" : True, "data" : [], "status" : str(e)}
 
 @app.route('/dependentorder', methods=['POST'])
 def dependentorder():
-    global turnoff 
-    data = request.json
-    
-    if data['strategyname'] in turnoff :
-        return {"error" : True, "data" : [], "status" : "Strategy is already turned off."}
-    
-    strategydata = sq.viewone(data['strategyname'])
-    if strategydata == [] : 
-        return {"error" : True, "data" : [], "status" : "Wrong strategy name"}
-    
-    strategydata = strategydata[0]
-    qty = strategydata['qty'] if data.get("qty") == None or data.get("qty") == False else data['qty']
-    splt = strategydata['freezequantity'] if data.get('split_qty') == None or data.get('split_qty') == False else data['split_qty']
-    refno = [rts.incr() for i in range(len(data['token']))]
-    price = [Ex.get_ltp(i)['ltp'] for i in data['token']] if not data['price'] else data['price']
-    orderdict = {
-        "reftag" : refno,
-        "strategyname" : data['strategyname'], 
-        "token" : data['token'], 
-        "transactiontype" : data['transactiontype'],
-        "qty" : int(qty), 
-        "split_qty" : int(splt), 
-        "to_split" : False if splt > qty or splt == 1 else True, 
-        "price" : price,
-        "is_forward" : True if strategydata['execution_type'] == "Forward" else False, 
-        "exchange" : strategydata['exchange'], 
-        "reason" : "" if data.get('reason') == None or data.get('reason') == False else data['reason']
-        }
-    print(orderdict)
-    
-    t1 = threading.Thread(target = lambda : Ex.dependent_execution(orderdict)).start()
-    return {"error" : False, "data" : [refno], "status" : "Order placed successfully."}
-
-def squareoff():
-    global turnoff 
-    data = request.json
-    v = Ex.openposition(data['strategyname'])
-    strategydata = sq.viewone(data['strategyname'])
-    
-    if data['strategyname'] in turnoff :
-        return {"error" : True, "data" : [], "status" : "Strategy is already turned off."}
-    
-    if strategydata == [] : 
-        return {"error" : True, "data" : [], "status" : "Wrong strategy name"}
-    
-    strategydata = strategydata[0]
-    
-    qtys = [abs(i['qty']) for i in v]
-    is_dependent_order = all([True if i == qtys[0] else False for i in qtys])
-    
-    if is_dependent_order : 
-        qty = qtys[0]
-        splt = strategydata['freezequantity']
-        refno = [rts.incr() for i in v]
-        price = [Ex.get_ltp(int(i['token']))['ltp'] for i in v]
-        transactiontype = ["buy" if i['qty'] < 0 else "sell" for i in v]
-        orderdict = {
+    try: 
+        global turnoff 
+        data = request.json
+        # print(data)
+        logger.debug("orderplacement")
+        if data['strategyname'] in turnoff :
+            return {"error" : True, "data" : [], "status" : "Strategy is already turned off."}
+        
+        strategydata = sq.viewone(data['strategyname'])
+        if strategydata == [] : 
+            return {"error" : True, "data" : [], "status" : "Wrong strategy name"}
+        
+        strategydata = strategydata[0]
+        qty = strategydata['qty'] if data.get("qty") == None or data.get("qty") == False else data['qty']
+        splt = strategydata['freezequantity'] if data.get('split_qty') == None or data.get('split_qty') == False else data['split_qty']
+        refno = [rts.incr() for i in range(len(data['token']))]
+        price = [Ex.get_ltp(i)['ltp'] for i in data['token']] if not data['price'] else data['price']
+        orderdict = { 
             "reftag" : refno,
             "strategyname" : data['strategyname'], 
-            "token" : [i['token'] for i in v], 
-            "transactiontype" : transactiontype,
+            "token" : data['token'], 
+            "transactiontype" : data['transactiontype'],
             "qty" : int(qty), 
             "split_qty" : int(splt), 
             "to_split" : False if splt > qty or splt == 1 else True, 
             "price" : price,
             "is_forward" : True if strategydata['execution_type'] == "Forward" else False, 
             "exchange" : strategydata['exchange'], 
-            "reason" : ""
+            "reason" : "" if data.get('reason') == None or data.get('reason') == False else data['reason']
             }
         print(orderdict)
-    
+        logger.debug("dependentorder")
         t1 = threading.Thread(target = lambda : Ex.dependent_execution(orderdict)).start()
         return {"error" : False, "data" : [refno], "status" : "Order placed successfully."}
-
-    else : 
-        for i in v :
-            qty = abs(i['qty'])
+    
+    except Exception as e : 
+        logger.exception("Error")
+        return {"error" : True, "data" : [], "status" : str(e)}
+    
+@app.route('/squareoff', methods=['POST'])
+def squareoff():
+    try : 
+        global turnoff 
+        data = request.json
+        v = Ex.openposition(data['strategyname'])
+        strategydata = sq.viewone(data['strategyname'])
+        
+        if data['strategyname'] in turnoff :
+            return {"error" : True, "data" : [], "status" : "Strategy is already turned off."}
+        
+        if strategydata == [] : 
+            return {"error" : True, "data" : [], "status" : "Wrong strategy name"}
+        
+        strategydata = strategydata[0]
+        
+        qtys = [abs(i['qty']) for i in v]
+        is_dependent_order = all([True if i == qtys[0] else False for i in qtys])
+        
+        if is_dependent_order : 
+            qty = qtys[0]
             splt = strategydata['freezequantity']
-            refno = rts.incr()
-            transactiontype = "buy" if i['qty'] < 0 else "sell"
+            refno = [rts.incr() for i in v]
+            price = [Ex.get_ltp(int(i['token']))['ltp'] for i in v]
+            transactiontype = ["buy" if i['qty'] < 0 else "sell" for i in v]
             orderdict = {
                 "reftag" : refno,
                 "strategyname" : data['strategyname'], 
-                "token" : int(data['token']), 
+                "token" : [i['token'] for i in v], 
                 "transactiontype" : transactiontype,
                 "qty" : int(qty), 
                 "split_qty" : int(splt), 
                 "to_split" : False if splt > qty or splt == 1 else True, 
-                "price" : Ex.get_ltp(int(i['token']))['ltp'] ,
+                "price" : price,
                 "is_forward" : True if strategydata['execution_type'] == "Forward" else False, 
                 "exchange" : strategydata['exchange'], 
-                "reason" : "" 
+                "reason" : ""
                 }
             print(orderdict)
-            t1 = threading.Thread(target = lambda : Ex.singleorder(orderdict)).start()
-            time.sleep(0.5)
-        return {"error" : False, "data" : [refno], "status" : "Order placed successfully."}
+        
+            t1 = threading.Thread(target = lambda : Ex.dependent_execution(orderdict)).start()
+            logger.debug("squareoff")
+            return {"error" : False, "data" : refno, "status" : "Order placed successfully."}
+    
+        else : 
+            refnos = []
+            for i in v :
+                qty = abs(i['qty'])
+                splt = strategydata['freezequantity']
+                refno = rts.incr()
+                transactiontype = "buy" if i['qty'] < 0 else "sell"
+                orderdict = {
+                    "reftag" : refno,
+                    "strategyname" : data['strategyname'], 
+                    "token" : int(i['token']), 
+                    "transactiontype" : transactiontype,
+                    "qty" : int(qty), 
+                    "split_qty" : int(splt), 
+                    "to_split" : False if splt > qty or splt == 1 else True, 
+                    "price" : Ex.get_ltp(int(i['token']))['ltp'] ,
+                    "is_forward" : True if strategydata['execution_type'] == "Forward" else False, 
+                    "exchange" : strategydata['exchange'], 
+                    "reason" : "" 
+                    }
+                print(orderdict)
+                refnos.append(refno)
+                t1 = threading.Thread(target = lambda : Ex.singleorder(orderdict)).start()
+                time.sleep(0.5)
+            logger.debug("squareoff")
+            return {"error" : False, "data" : refnos, "status" : "Order placed successfully."}
+        
+    except Exception as e :
+        logger.exception("Error")
+        return {"error" : True, "data" : [], "status" : str(e)}
         
 @app.route("/addstrategy", methods = ['POST'])
 def addstrategy(): 
@@ -192,8 +207,6 @@ def addstrategy():
         d = sq.viewone(strategy)
         if d != [] : 
             raise Exception("Strategy Already Exists")
-
-        # sq.add_strategy(strategy, exectype, quantity, product_type) 
         sq.add_strategy(strategy, data['exectype'], data['quantity'], data['product_type'], freezequantity = data.get('freezequantity'), 
                         symbol = data.get('symbol'), grouptag = data.get('grouptag'), exchange = data.get('exchange'))
         
