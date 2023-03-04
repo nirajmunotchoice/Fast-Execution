@@ -301,6 +301,12 @@ class Manage_strategies():
     def get_orderids(self, refno, strategyname, token):
         v = self._reader(f"SELECT orderid FROM {self.orderbook} WHERE strategyname = '{strategyname}' AND refno = '{refno}' AND token = '{token}'")
         return v
+    
+    def add_trade(self, strategyname, entrytime, symbol, entryprice, entryprice_executed, positiontype, quantity, token, exittime, exitprice, exitprice_executed, exit_reason, date, forward_test = "NO"):
+        sql = f"""INSERT INTO {self.trades} (strategyname, entrytime, symbol, entryprice, entryprice_executed, positiontype, quantity, token, exittime, exitprice, exitprice_executed, exit_reason, date, forward_test) 
+                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+        val = (strategyname, entrytime, symbol, entryprice, entryprice_executed, positiontype, quantity, token, exittime, exitprice, exitprice_executed, exit_reason, date, forward_test)
+        self._executor(sql,val)
         
     def _executor(self, sqlmsg, val = None):
         db = mysql.connector.connect(host=self.host, user=self.user, password=self.password, database = self.database)

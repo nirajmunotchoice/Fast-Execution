@@ -85,3 +85,7 @@ mycursor.execute("""
 
 lst = ["refno", "strategyname", "orderid", "orderstatus", "token" , "transactiontype" , "req_qty" , "exec_qty" , "symbol" , "is_done" , "is_exec" , "placed_at", 
        "recon_at" , "order_desc", "is_traded", "requested_price", "traded_price", "traded_at"]
+
+
+lsttrades = ['id', "strategyname", "entrytime", "exittime", "symbol", "entryprice", "entryprice_executed", "exitprice", "exitprice_executed", "positiontype", 
+             "quantity", "token", "date", "exit_reason", "forward_test"]

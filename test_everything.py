@@ -188,6 +188,7 @@ x = sq.get_positions("test_NF")
 df = pd.DataFrame(x)
 g = df.groupby("token")
 
+stname = "test_NF"
 for i in g.groups.keys():
     n = g.get_group(i)
     n['tm'] = pd.to_datetime(n['tm'])
@@ -208,7 +209,8 @@ for i in g.groups.keys():
         v = n.iloc[0]
         postype = v['positiontype']
         qty = v['qty']
-        td = {"entryprice" : v['price'], "token" : v['token'], "entrytime" : v['tm']}
+        
+        td = {"strategyname" : stname,"entryprice" : v['price'], "token" : v['token'], "entrytime" : v['tm'], "entryprice_exeucted": v['traded_price']}
         xn = n[(n.index != v.name) & (n['positiontype'] != postype)]
         print(qty)
         ch = False
@@ -239,6 +241,9 @@ for i in g.groups.keys():
                 trades = trades.append(td, ignore_index= True)
         unchanged = True if ch == False else unchanged
         time.sleep(0.5)
+
+lsttrades = ['id', "strategyname", "entrytime", "exittime", "symbol", "entryprice", "entryprice_executed", "exitprice", "exitprice_executed", "positiontype", 
+             "quantity", "token", "date", "exit_reason", "forward_test"]
 
 n = n.append(n)
 n = n.reset_index()
@@ -291,4 +296,87 @@ for i in g.groups.keys():
         
     # td[i] = {'buyaverage' : sum(buytrades['traded_price'] * buytrades['traded_qty']) , "buyqty" : }
     # n1 = n.groupby('token')   
+
+x = pd.DataFrame(ex.stnetpositions("test_NF"))
+x = x.transpose()
+
+# =============================================================================
+# Positions to trades
+# =============================================================================
+
+import time
+trades = pd.DataFrame()
+x = sq.get_positions("test_NF")
+df = pd.DataFrame(x)
+g = df.groupby("token")
+
+opentrades = pd.DataFrame()
+
+stname = "test_NF"
+
+for i in g.groups.keys():
+    n = g.get_group(i)
+    n['tm'] = pd.to_datetime(n['tm'])
+    n = n.sort_values(by = ['tm'])
+    n = n.reset_index(drop = True, inplace = False)
+    vnnn = n.copy(deep = True)
+    unchanged = False
+    while not unchanged and not n.empty: 
+        v = n.iloc[0]
+        postype = v['positiontype']
+        qty = v['traded_qty']
+        td = {"strategyname" : stname,"entryprice" : v['price'], "entrytime" : v['tm'], "entryprice_executed": v['traded_price'],
+              "positiontype" : postype, "token" : v['token'], "symbol" : v['symbol'], "forward_test" : False if v['is_forward'] == 0 else True}
+        xn = n[(n.index != v.name) & (n['positiontype'] != postype)]
+        ch = False
+        xa = 0
+        for xa in range(len(xn)):
+            if qty != 0 :
+                vxz = xn.iloc[xa]
+                if qty == vxz['traded_qty']:
+                    td['quantity'] = qty
+                    td['date'] = vxz['tm'].date()
+                    td['exittime'] = vxz['tm']
+                    td['exitprice'] = vxz['price']
+                    td['exitprice_executed'] = vxz['traded_price']
+                    qty = 0
+                    n.drop([v.name, vxz.name], axis = 0, inplace = True)
+                    
+                elif qty > vxz['traded_qty']:
+                    td['quantity'] = qty
+                    td['date'] = vxz['tm'].date()
+                    td['exittime'] = vxz['tm']
+                    td['exitprice'] = vxz['price']
+                    td['exitprice_executed'] = vxz['traded_price']
+                    qty = qty - vxz['traded_qty']
+                    n.at[v.name, "traded_qty"] = qty
+                    n.at[v.name, "qty"] = qty
+                    n.drop([vxz.name], axis = 0, inplace = True)
+                    
+                elif qty < vxz['traded_qty']:
+                    n.at[vxz.name, "qty"] = vxz['traded_qty'] - qty
+                    n.at[vxz.name, "traded_qty"] = vxz['traded_qty'] - qty
+                    n.drop([v.name], axis = 0, inplace = True)
+                    td['quantity'] = qty
+                    td['date'] = vxz['tm'].date()
+                    td['exittime'] = vxz['tm']
+                    td['exitprice'] = vxz['price']
+                    td['exitprice_executed'] = vxz['traded_price']
+                    qty = 0
+                print(qty)
+                ch = True
+                trades = trades.append(td, ignore_index= True)
+        unchanged = True if ch == False else unchanged
+        time.sleep(0.5)
+    
+    if not n.empty:
+        opentrades = opentrades.append(n)
+        
+lsttrades = ['id', "strategyname", "entrytime", "exittime", "symbol", "entryprice", "entryprice_executed", "exitprice", "exitprice_executed", "positiontype", 
+             "quantity", "token", "date", "exit_reason", "forward_test"]
+
+for i in range(len(trades)):
+    c = trades.iloc[i]    
+    sq.add_trade(c['strategyname'], c['entrytime'], c['symbol'], c['entryprice'], c['entryprice_executed'], c['positiontype'], int(c['quantity']), int(c['token']), 
+                 c['exittime'], c['exitprice'], c['exitprice_executed'], "", c['date'])
 

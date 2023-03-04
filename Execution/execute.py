@@ -13,11 +13,19 @@ import pandas as pd
 import redis 
 import ast
 from sql_manager.sql_control import Manage_strategies
-import numpy as np 
+# import numpy as np 
 import json
 from Jiffy.jiffy import *
 import threading
 import copy 
+
+now = datetime.datetime.now().strftime("%d-%m-%Y")
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(name)s:%(message)s')
+filehandler = logging.FileHandler('execution_log{}.log'.format(now))
+filehandler.setFormatter(formatter)
+logger.addHandler(filehandler)
 
 class Execution():
     def __init__(self):
@@ -152,7 +160,7 @@ class Execution():
             time.sleep(0.5)
         
         orderstat = "FAILED" if len(execlst) == 0 else "PARTIAL" if len(execlst) != len(orderids) else "EXECUTED" if len(execlst) == len(orderids) else None
-        orderstat = "PARTIAL" if (sum(execlst) != orderdetails['qty']) and (orderstat == "EXECUTED") else orderstat
+        orderstat = "PARTIAL" if (sum(execlst) != orderdetails['qty']) and (orderstat == "EXECUTED") else orderstat 
         c = self.sq.update_position(orderdetails['reftag'], orderdetails['strategyname'], orderdetails['token'], orderstatus = orderstat, traded_qty = sum(execlst),
                              traded_price = None, is_exec = 0 if orderstat == "FAILED" else 1, is_recon = 0, is_sqoff = 0, is_forward = 0
                              ,exec_orders = len(execlst))
