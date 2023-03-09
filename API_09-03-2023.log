@@ -1,0 +1,52 @@
+[2023-03-09 11:16:09,390] 192.168.3.36 requested http://192.168.3.36:5003/placeorder | {'strategyname': 'test_NF', 'token': 48714, 'price': 38.15, 'transactiontype': 'sell', 'reason': '', 'qty': 75, 'split_qty': 25}: DEBUG in main_API: orderplacement
+[2023-03-09 11:17:21,746] 192.168.3.36 requested http://192.168.3.36:5003/placeorder | {'strategyname': 'test_NF', 'token': 46024, 'price': 38.15, 'transactiontype': 'sell', 'reason': '', 'qty': 75, 'split_qty': 25}: DEBUG in main_API: orderplacement
+[2023-03-09 11:24:07,328] 192.168.3.36 requested http://192.168.3.36:5003/placeorder | {'strategyname': 'test_NF', 'token': 46024, 'price': 38.15, 'transactiontype': 'sell', 'reason': '', 'qty': 75, 'split_qty': 25}: DEBUG in main_API: orderplacement
+[2023-03-09 11:25:07,687] 192.168.3.36 requested http://192.168.3.36:5003/placeorder | {'strategyname': 'test_NF', 'token': 46024, 'price': 38.15, 'transactiontype': 'sell', 'reason': '', 'qty': 75, 'split_qty': 25}: DEBUG in main_API: orderplacement
+[2023-03-09 11:30:24,111] 192.168.3.36 requested http://192.168.3.36:5003/placeorder | {'strategyname': 'test_NF', 'token': 46024, 'price': 38.15, 'transactiontype': 'sell', 'reason': '', 'qty': 75, 'split_qty': 50}: DEBUG in main_API: orderplacement
+[2023-03-09 13:53:18,086] 192.168.3.36 requested http://192.168.3.36:5003/addstrategy | {'strategyname': 'test2', 'exectype': 'Live', 'quantity': 75, 'product_type': 'Delivery', 'freezequantity': 25, 'symbol': 'BANKNIFTY', 'grouptag': 'test'}: DEBUG in main_API: strategy added
+[2023-03-09 13:56:42,902] 192.168.3.36 requested http://192.168.3.36:5003/placeorder | {'strategyname': 'test_NF', 'token': 46022, 'price': 1.35, 'transactiontype': 'buy', 'reason': '', 'qty': 50, 'split_qty': 25}: DEBUG in main_API: orderplacement
+[2023-03-09 13:57:01,715] 192.168.3.36 requested http://192.168.3.36:5003/STopenpositions | {'strategyname': 'test_NF'}: DEBUG in main_API: open pos
+[2023-03-09 13:58:01,387] 192.168.3.36 requested http://192.168.3.36:5003/STopenpositions | {'strategyname': 'test_NF'}: DEBUG in main_API: open pos
+[2023-03-09 13:58:15,974] 192.168.3.36 requested http://192.168.3.36:5003/STnetpositions | {'strategyname': ''}: DEBUG in main_API: STnetpositions
+[2023-03-09 13:58:30,870] 192.168.3.36 requested http://192.168.3.36:5003/STnetpositions | {'strategyname': 'test_NF'}: DEBUG in main_API: STnetpositions
+[2023-03-09 13:58:36,716] 192.168.3.36 requested http://192.168.3.36:5003/dependentorder | {'strategyname': 'test2', 'token': [46022, 46009], 'price': [1.5, 2.15], 'transactiontype': ['buy', 'buy'], 'reason': '', 'qty': 75, 'split_qty': 25}: DEBUG in main_API: orderplacement
+[2023-03-09 13:58:36,716] 192.168.3.36 requested http://192.168.3.36:5003/dependentorder | {'strategyname': 'test2', 'token': [46022, 46009], 'price': [1.5, 2.15], 'transactiontype': ['buy', 'buy'], 'reason': '', 'qty': 75, 'split_qty': 25}: DEBUG in main_API: dependentorder
+[2023-03-09 13:59:55,976] 192.168.3.36 requested http://192.168.3.36:5003/dependentorder | {'strategyname': 'test2', 'token': [46022, 46009], 'price': [1.5, 2.15], 'transactiontype': ['buy', 'buy'], 'reason': '', 'qty': 75, 'split_qty': 25}: DEBUG in main_API: orderplacement
+[2023-03-09 13:59:55,979] 192.168.3.36 requested http://192.168.3.36:5003/dependentorder | {'strategyname': 'test2', 'token': [46022, 46009], 'price': [1.5, 2.15], 'transactiontype': ['buy', 'buy'], 'reason': '', 'qty': 75, 'split_qty': 25}: DEBUG in main_API: dependentorder
+[2023-03-09 14:00:19,989] 192.168.3.36 requested http://192.168.3.36:5003/STnetpositions | {'strategyname': 'test_NF'}: DEBUG in main_API: STnetpositions
+[2023-03-09 14:00:25,621] 192.168.3.36 requested http://192.168.3.36:5003/STnetpositions | {'strategyname': 'test2'}: DEBUG in main_API: STnetpositions
+[2023-03-09 14:00:41,225] 192.168.3.36 requested http://192.168.3.36:5003/STnetpositions | {'strategyname': ''}: DEBUG in main_API: STnetpositions
+[2023-03-09 14:01:04,185] 192.168.3.36 requested http://192.168.3.36:5003/squareoff | {'strategyname': 'test_NF'}: DEBUG in main_API: squareoff
+[2023-03-09 14:01:42,405] 192.168.3.36 requested http://192.168.3.36:5003/STnetpositions | {'strategyname': ''}: DEBUG in main_API: STnetpositions
+[2023-03-09 14:02:19,091] 192.168.3.36 requested http://192.168.3.36:5003/STnetpositions | {'strategyname': ''}: DEBUG in main_API: STnetpositions
+[2023-03-09 14:03:17,587] 192.168.3.36 requested http://192.168.3.36:5003/STnetpositions | {'strategyname': ''}: DEBUG in main_API: STnetpositions
+[2023-03-09 14:03:47,516] 192.168.3.36 requested http://192.168.3.36:5003/squareoff | {'strategyname': 'test2'}: DEBUG in main_API: squareoff
+[2023-03-09 14:04:20,962] 192.168.3.36 requested http://192.168.3.36:5003/STnetpositions | {'strategyname': ''}: DEBUG in main_API: STnetpositions
+[2023-03-09 14:06:21,650] 192.168.3.36 requested http://192.168.3.36:5003/placeorder | {'strategyname': 'test_NF', 'token': 46022, 'price': 1.35, 'transactiontype': 'buy', 'reason': '', 'qty': 50, 'split_qty': 25}: DEBUG in main_API: orderplacement
+[2023-03-09 14:06:21,687] 192.168.3.36 requested http://192.168.3.36:5003/dependentorder | {'strategyname': 'test2', 'token': [46022, 46009], 'price': [1.5, 2.15], 'transactiontype': ['buy', 'buy'], 'reason': '', 'qty': 75, 'split_qty': 25}: DEBUG in main_API: orderplacement
+[2023-03-09 14:06:21,689] 192.168.3.36 requested http://192.168.3.36:5003/dependentorder | {'strategyname': 'test2', 'token': [46022, 46009], 'price': [1.5, 2.15], 'transactiontype': ['buy', 'buy'], 'reason': '', 'qty': 75, 'split_qty': 25}: DEBUG in main_API: dependentorder
+[2023-03-09 14:06:42,126] 192.168.3.36 requested http://192.168.3.36:5003/STnetpositions | {'strategyname': ''}: DEBUG in main_API: STnetpositions
+[2023-03-09 14:10:30,952] 192.168.3.36 requested http://192.168.3.36:5003/dependentorder | {'strategyname': 'test2', 'token': [46022, 46009], 'price': [1.5, 2.15], 'transactiontype': ['sell', 'sell'], 'reason': '', 'qty': 75, 'split_qty': 25}: DEBUG in main_API: orderplacement
+[2023-03-09 14:10:30,952] 192.168.3.36 requested http://192.168.3.36:5003/dependentorder | {'strategyname': 'test2', 'token': [46022, 46009], 'price': [1.5, 2.15], 'transactiontype': ['sell', 'sell'], 'reason': '', 'qty': 75, 'split_qty': 25}: DEBUG in main_API: dependentorder
+[2023-03-09 14:10:36,715] 192.168.3.36 requested http://192.168.3.36:5003/STnetpositions | {'strategyname': ''}: DEBUG in main_API: STnetpositions
+[2023-03-09 14:10:44,807] 192.168.3.36 requested http://192.168.3.36:5003/STopenpositions | {'strategyname': 'test_NF'}: DEBUG in main_API: open pos
+[2023-03-09 14:10:57,060] 192.168.3.36 requested http://192.168.3.36:5003/STopenpositions | {'strategyname': 'test2'}: DEBUG in main_API: open pos
+[2023-03-09 14:11:44,606] 192.168.3.36 requested http://192.168.3.36:5003/STnetpositions | {'strategyname': 'test2'}: DEBUG in main_API: STnetpositions
+[2023-03-09 14:11:48,721] 192.168.3.36 requested http://192.168.3.36:5003/STnetpositions | {'strategyname': 'test2'}: DEBUG in main_API: STnetpositions
+[2023-03-09 14:12:20,877] 192.168.3.36 requested http://192.168.3.36:5003/dependentorder | {'strategyname': 'test2', 'token': [46022, 46009], 'price': [1.5, 2.15], 'transactiontype': ['buy', 'buy'], 'reason': '', 'qty': 25, 'split_qty': 25}: DEBUG in main_API: orderplacement
+[2023-03-09 14:12:20,879] 192.168.3.36 requested http://192.168.3.36:5003/dependentorder | {'strategyname': 'test2', 'token': [46022, 46009], 'price': [1.5, 2.15], 'transactiontype': ['buy', 'buy'], 'reason': '', 'qty': 25, 'split_qty': 25}: DEBUG in main_API: dependentorder
+[2023-03-09 14:12:29,410] 192.168.3.36 requested http://192.168.3.36:5003/STopenpositions | {'strategyname': 'test2'}: DEBUG in main_API: open pos
+[2023-03-09 14:13:45,511] 192.168.3.36 requested http://192.168.3.36:5003/STnetpositions | {'strategyname': 'test2'}: DEBUG in main_API: STnetpositions
+[2023-03-09 14:14:12,805] 192.168.3.36 requested http://192.168.3.36:5003/STnetpositions | {'strategyname': ''}: DEBUG in main_API: STnetpositions
+[2023-03-09 14:15:15,553] 192.168.3.36 requested http://192.168.3.36:5003/squareoff | {'strategyname': 'test2'}: DEBUG in main_API: squareoff
+[2023-03-09 14:15:21,600] 192.168.3.36 requested http://192.168.3.36:5003/squareoff | {'strategyname': 'test_NF'}: DEBUG in main_API: squareoff
+[2023-03-09 14:15:42,179] 192.168.3.36 requested http://192.168.3.36:5003/STnetpositions | {'strategyname': ''}: DEBUG in main_API: STnetpositions
+[2023-03-09 14:16:53,409] 192.168.3.36 requested http://192.168.3.36:5003/STpositions | {'strategyname': ''}: DEBUG in main_API: STpositions
+[2023-03-09 14:17:00,462] 192.168.3.36 requested http://192.168.3.36:5003/STpositions | {'strategyname': 'test2'}: DEBUG in main_API: STpositions
+[2023-03-09 14:17:48,565] 192.168.3.36 requested http://192.168.3.36:5003/STnetpositions | {'strategyname': ''}: DEBUG in main_API: STnetpositions
+[2023-03-09 14:18:03,623] 192.168.3.36 requested http://192.168.3.36:5003/STorders | {'strategyname': ''}: DEBUG in main_API: STorders
+[2023-03-09 14:18:07,474] 192.168.3.36 requested http://192.168.3.36:5003/STorders | {'strategyname': 'test2'}: DEBUG in main_API: STorders
+[2023-03-09 14:28:52,050] 192.168.3.36 requested http://192.168.3.36:5003/dependentorder | {'strategyname': 'test2', 'token': [46022, 46009], 'price': [1.5, 2.15], 'transactiontype': ['buy', 'buy'], 'reason': '', 'qty': 25, 'split_qty': 25}: DEBUG in main_API: orderplacement
+[2023-03-09 14:29:23,548] 192.168.3.36 requested http://192.168.3.36:5003/placeorder | {'strategyname': 'test_NF', 'token': 46022, 'price': 1.35, 'transactiontype': 'buy', 'reason': '', 'qty': 50, 'split_qty': 25}: DEBUG in main_API: orderplacement
+[2023-03-09 14:29:33,480] 192.168.3.36 requested http://192.168.3.36:5003/squareoff | {'strategyname': 'test_NF'}: DEBUG in main_API: squareoff
+[2023-03-09 14:30:39,439] 192.168.3.36 requested http://192.168.3.36:5003/STnetpositions | {'strategyname': ''}: DEBUG in main_API: STnetpositions

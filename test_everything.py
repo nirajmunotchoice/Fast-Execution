@@ -380,3 +380,15 @@ for i in range(len(trades)):
     sq.add_trade(c['strategyname'], c['entrytime'], c['symbol'], c['entryprice'], c['entryprice_executed'], c['positiontype'], int(c['quantity']), int(c['token']), 
                  c['exittime'], c['exitprice'], c['exitprice_executed'], "", c['date'])
 
+# =============================================================================
+# ALERTS
+# =============================================================================
+from alerts.tele_alerts import Send_alerts
+
+snd = Send_alerts()
+
+snd.send_alert("test ALERT")
+
+
+
+c = sq.get_all_trades(datetime.date(2023,1,1), datetime.date(2023,3,5))

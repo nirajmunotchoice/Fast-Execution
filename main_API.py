@@ -118,7 +118,7 @@ def dependentorder():
         print(orderdict)
         logger.debug("dependentorder")
         t1 = threading.Thread(target = lambda : Ex.dependent_execution(orderdict)).start()
-        return {"error" : False, "data" : [refno], "status" : "Order placed successfully."}
+        return {"error" : False, "data" : refno, "status" : "Order placed successfully."}
     
     except Exception as e : 
         logger.exception("Error")
@@ -138,8 +138,12 @@ def squareoff():
         if strategydata == [] : 
             return {"error" : True, "data" : [], "status" : "Wrong strategy name"}
         
-        strategydata = strategydata[0]
+        if v == [] :
+            turnoff.append(data['strategyname'])
+            return {"error" : True, "data" : [], "status" : "No Existing Open Positions."}
         
+        strategydata = strategydata[0]
+        turnoff.append(data['strategyname'])
         qtys = [abs(i['qty']) for i in v]
         is_dependent_order = all([True if i == qtys[0] else False for i in qtys])
         
@@ -198,7 +202,25 @@ def squareoff():
     except Exception as e :
         logger.exception("Error")
         return {"error" : True, "data" : [], "status" : str(e)}
-        
+
+@app.route("/removesquareoff", methods = ['POST'])
+def remove_from_squareoff():
+    global turnoff
+    try: 
+        stname = request.json['strategyname']
+        if stname in turnoff : 
+            turnoff.remove(stname)
+            return {"error" : False, "status" : "Strategy removed from squareoff."}
+        else: 
+            return {"error" : False, "status" : "strategy not in squareoff"}
+    except Exception as e : 
+        return {"error" : True, "status" : str(e)}
+
+@app.route("/inturnoff", methods = ['GET'])
+def in_turnoff():
+    global turnoff
+    return {"error" : False, "data" : turnoff , "status" : ""}
+
 @app.route("/addstrategy", methods = ['POST'])
 def addstrategy(): 
     try: 

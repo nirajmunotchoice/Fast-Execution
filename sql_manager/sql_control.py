@@ -307,6 +307,32 @@ class Manage_strategies():
                  VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
         val = (strategyname, entrytime, symbol, entryprice, entryprice_executed, positiontype, quantity, token, exittime, exitprice, exitprice_executed, exit_reason, date, forward_test)
         self._executor(sql,val)
+    
+    def get_trades_bystrategy(self, strategyname, startdate, enddate):
+        sql = f"""SELECT strategies_data.grouptag, trades.* FROM trades INNER JOIN strategies_data ON trades.strategyname = {self.strategiesdata}.strategyname
+        WHERE trades.strategyname = '{strategyname}' AND trades.date >= '{str(startdate)}' AND trades.date <= '{str(enddate)}'"""
+        a = self._reader(sql)
+        columns = ["grouptag","id", "strategyname", "entrytime", "exittime", "symbol", "entryprice", "entryprice_executed", "exitprice", "exitprice_executed", "positiontype",
+                   "quantity", "token", "date", "exit_reason", "forward_test"]
+        return [{val : i[columns.index(val)] for val in columns} for i in a]
+        
+    def get_trades_bygroup(self, groupname, startdate, enddate):
+        sql = f"""SELECT strategies_data.grouptag, trades.* FROM trades INNER JOIN strategies_data ON trades.strategyname = {self.strategiesdata}.strategyname 
+        WHERE strategies_data.grouptag = '{groupname}' AND trades.date >= '{str(startdate)}' AND DATE <= '{str(enddate)}' """
+        
+        a = self._reader(sql)
+        columns = ["grouptag","id", "strategyname", "entrytime", "exittime", "symbol", "entryprice", "entryprice_executed", "exitprice", "exitprice_executed", "positiontype",
+                   "quantity", "token", "date", "exit_reason", "forward_test"]
+        return [{val : i[columns.index(val)] for val in columns} for i in a]
+    
+    def get_all_trades(self, startdate, enddate):       
+        # sql = f"""SELECT * FROM trades WHERE DATE >= '{str(startdate)}' AND DATE <= '{str(enddate)}' """
+        sql = f"""SELECT strategies_data.grouptag, trades.* FROM trades INNER JOIN strategies_data ON trades.strategyname = {self.strategiesdata}.strategyname 
+        WHERE trades.date >= '{str(startdate)}' AND DATE <= '{str(enddate)}' """
+        a = self._reader(sql)
+        columns = ["grouptag","id", "strategyname", "entrytime", "exittime", "symbol", "entryprice", "entryprice_executed", "exitprice", "exitprice_executed", "positiontype",
+                   "quantity", "token", "date", "exit_reason", "forward_test"]
+        return [{val : i[columns.index(val)] for val in columns} for i in a]
         
     def _executor(self, sqlmsg, val = None):
         db = mysql.connector.connect(host=self.host, user=self.user, password=self.password, database = self.database)
