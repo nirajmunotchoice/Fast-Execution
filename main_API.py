@@ -132,6 +132,7 @@ def squareoff():
         v = Ex.openposition(data['strategyname'])
         strategydata = sq.viewone(data['strategyname'])
         
+        trnf = True if data.get("turnoff") == True else False
         if data['strategyname'] in turnoff :
             return {"error" : True, "data" : [], "status" : "Strategy is already turned off."}
         
@@ -139,11 +140,13 @@ def squareoff():
             return {"error" : True, "data" : [], "status" : "Wrong strategy name"}
         
         if v == [] :
-            turnoff.append(data['strategyname'])
+            if trnf : 
+                turnoff.append(data['strategyname'])
             return {"error" : True, "data" : [], "status" : "No Existing Open Positions."}
         
         strategydata = strategydata[0]
-        turnoff.append(data['strategyname'])
+        if trnf: 
+            turnoff.append(data['strategyname'])
         qtys = [abs(i['qty']) for i in v]
         is_dependent_order = all([True if i == qtys[0] else False for i in qtys])
         
@@ -392,19 +395,38 @@ def get_netpositions():
 def stop_trade_recon():
     Ex.trades_process = False
     return {"status" : True}
-    
+
 def start_trade_recon():
     Ex.trades_process = True
     t1 = threading.Thread(target = Ex.trade_reconcile).start()
-    
+
+@app.route("/active_order_threads")
 def active_order_threads():
     return Ex.recon_threads
 
-def stop_recon_threads(reftag):
+@app.route("/stop_recon_threads")
+def stop_recon_threads():
+    reftag = request.json['reftag']
     Ex.recon_threads[reftag]['is_running'] = False
 
-    
-    
+@app.route("/push_trades")
+def push_trades():
+    try: 
+        Ex.trade_push()
+        return {"error":False, "data" : [], "status" : "Done"} 
+    except Exception as e : 
+        return {"error":True, "data" : str(e), "status" : "failed"} 
+        
+@app.route("/trades")
+def trades():
+    try : 
+        data = request.json
+        trades = Ex.get_trades(data['startdate'], data['enddate'], strategyname = data['strategyname'], groupname = data['groupname'])
+        return {"error":False, "data" : trades, "status" : "Data Received"} 
+    except Exception as e :  
+        logger.exception("error")
+        return {"error":True, "data" : [], "status" : str(e)} 
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5003)
 

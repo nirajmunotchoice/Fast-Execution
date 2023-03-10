@@ -336,7 +336,7 @@ class Execution():
                 ltp = self.get_ltp(i)['ltp'] #USE GET LTP HERE
             except : 
                 ltp = 0
-
+ 
             if buyqty > sellqty:
                 bookedpnl = (sellavg - buyavg) * sellqty
                 remainingqty = buyqty - sellqty
@@ -344,7 +344,7 @@ class Execution():
             
             elif sellqty > buyqty:
                 bookedpnl = (sellavg - buyavg) * buyqty
-                remainingqty = sellqty - buyqty
+                remainingqty = buyqty - sellqty
                 openpnl = (sellavg - ltp) * remainingqty
             
             elif buyqty == sellqty:
@@ -473,13 +473,13 @@ class Execution():
     
     def get_trades(self, startdate, enddate, strategyname = "", groupname = ""):
         if strategyname == "" and groupname == "": 
-            return self.sq.get_all_trades(startdate, enddate)
+            return self.calculate_trades_pnl(self.sq.get_all_trades(startdate, enddate))
     
         elif strategyname != "" : 
-            return self.sq.get_trades_bystrategy(strategyname,startdate, enddate)
+            return self.calculate_trades_pnl(self.sq.get_trades_bystrategy(strategyname,startdate, enddate))
     
         elif groupname != "" : 
-            return self.sq.get_trades_bygroup(groupname, startdate, enddate)
+            return self.calculate_trades_pnl(self.sq.get_trades_bygroup(groupname, startdate, enddate))
             
     def calculate_trades_pnl(self, a):
         for i in a :
@@ -487,7 +487,7 @@ class Execution():
                 i['expected_pnl'] = (i['entryprice'] - i['exitprice']) * i['quantity']
                 i['actual_pnl'] = (i['entryprice_executed'] - i['exitprice_executed']) * i['quantity']
                 try: 
-                    i['slippage'] = (i['actual_pnl'] - i['expected_pnl']) / i['expected_pnl'] * 100
+                    i['slippage'] = i['actual_pnl'] - i['expected_pnl']
                 except:
                     i['slippage'] = 0 
                 
@@ -495,13 +495,94 @@ class Execution():
                 i['expected_pnl'] = (i['exitprice'] - i['entryprice']) * i['quantity']
                 i['actual_pnl'] = (i['exitprice_executed'] - i['entryprice_executed']) * i['quantity']
                 try: 
-                    i['slippage'] = (i['actual_pnl'] - i['expected_pnl']) / i['expected_pnl'] * 100
+                    i['slippage'] = i['actual_pnl'] - i['expected_pnl']
                 except: 
                     i['slippage']= 0
         
+        return a
         
     def trade_push(self):
-        pass
+        opentrades = pd.DataFrame()
+        trades = pd.DataFrame()
+        
+        strategies = list(self.sq.viewall().keys())
+        for s in strategies : 
+            x = self.sq.get_positions(s)
+            if x != [] : 
+                df = pd.DataFrame(x)
+                g = df.groupby("token")
+                for i in g.groups.keys():
+                    n = g.get_group(i)
+                    n['tm'] = pd.to_datetime(n['tm'])
+                    n = n.sort_values(by = ['tm'])
+                    n = n.reset_index(drop = True, inplace = False)
+                    unchanged = False
+                    while not unchanged and not n.empty: 
+                        v = n.iloc[0]
+                        postype = v['positiontype']
+                        qty = v['traded_qty']
+                        td = {"strategyname" : s,"entryprice" : v['price'], "entrytime" : v['tm'], "entryprice_executed": v['traded_price'],
+                              "positiontype" : postype, "token" : v['token'], "symbol" : v['symbol'], "forward_test" : False if v['is_forward'] == 0 else True}
+                        xn = n[(n.index != v.name) & (n['positiontype'] != postype)]
+                        ch = False
+                        xa = 0
+                        for xa in range(len(xn)):
+                            if qty != 0 :
+                                vxz = xn.iloc[xa]
+                                if qty == vxz['traded_qty']:
+                                    td['quantity'] = qty
+                                    td['date'] = vxz['tm'].date()
+                                    td['exittime'] = vxz['tm']
+                                    td['exitprice'] = vxz['price']
+                                    td['exitprice_executed'] = vxz['traded_price']
+                                    td['forward_test'] = "YES" if v['is_forward'] == 1 else "NO"
+                                    qty = 0
+                                    n.drop([v.name, vxz.name], axis = 0, inplace = True)
+                                    
+                                elif qty > vxz['traded_qty']:
+                                    td['quantity'] = vxz['traded_qty']
+                                    td['date'] = vxz['tm'].date()
+                                    td['exittime'] = vxz['tm']
+                                    td['exitprice'] = vxz['price']
+                                    td['exitprice_executed'] = vxz['traded_price']
+                                    td['forward_test'] = "YES" if v['is_forward'] == 1 else "NO"
+                                    qty = qty - vxz['traded_qty']
+                                    n.at[v.name, "traded_qty"] = qty
+                                    n.at[v.name, "qty"] = qty
+                                    n.drop([vxz.name], axis = 0, inplace = True)
+                                    
+                                elif qty < vxz['traded_qty']:
+                                    n.at[vxz.name, "qty"] = vxz['traded_qty'] - qty
+                                    n.at[vxz.name, "traded_qty"] = vxz['traded_qty'] - qty
+                                    n.drop([v.name], axis = 0, inplace = True)
+                                    td['quantity'] = qty
+                                    td['date'] = vxz['tm'].date()
+                                    td['exittime'] = vxz['tm']
+                                    td['exitprice'] = vxz['price']
+                                    td['exitprice_executed'] = vxz['traded_price']
+                                    td['forward_test'] = "YES" if v['is_forward'] == 1 else "NO"
+                                    qty = 0
+                                print(qty)
+                                ch = True
+                                trades = trades.append(td, ignore_index= True)
+                        unchanged = True if ch == False else unchanged
+                    
+                    if not n.empty:
+                        opentrades = opentrades.append(n)
+        
+        for i in range(len(trades)):
+            c = trades.iloc[i]    
+            self.sq.add_trade(c['strategyname'], c['entrytime'], c['symbol'], c['entryprice'], c['entryprice_executed'], c['positiontype'], int(c['quantity']), int(c['token']), 
+                         c['exittime'], c['exitprice'], c['exitprice_executed'], "", c['date'], forward_test = c['forward_test'])
+        
+        self.sq.drop_positions()
+        for i in range(len(opentrades)):
+            c = opentrades.iloc[i]
+            v= self.sq.add_position(int(c['refno']), c['strategyname'], int(c['token']), tm = c['tm'], symbol = c['symbol'], price = c['price'], traded_price = c['traded_price'], 
+                            positiontype = c['positiontype'], qty = int(c['qty']), traded_qty = int(c['traded_qty']), orderstatus = c['orderstatus'], 
+                            is_exec = int(c['is_exec']), is_recon = int(c['is_recon']), is_sqoff = int(c['is_sqoff']), is_forward = int(c['is_forward']), 
+                            sent_orders = int(c['sent_orders']),exec_orders = int(c['exec_orders']))
+
     
 # =============================================================================
 # print("A")

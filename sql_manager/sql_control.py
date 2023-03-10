@@ -69,12 +69,12 @@ class Manage_strategies():
         n = {}
         for i in v : 
             n[i[0]] = {"strategyname":i[0], "execution_type" : i[1], "qty" : i[2], "product_type" : i[3],
-                       "freezequantity" : i[4], "symbol" : i[5], "grouptag" : i[6], "exchange" : i[7]}
+                       "freezequantity" : i[4], "symbol" : i[5], "grouptag" : i[6], "exchange" : i[7], "lotsize" : i[8], "capitalperlot" : i[9]}
         return n
-     
+      
     def viewone(self, name): 
         v = self._reader(f"SELECT * FROM {self.strategiesdata} WHERE strategyname = '{name}'")
-        columns = ['strategyname', 'execution_type', "qty", "product_type", "freezequantity", "symbol", "grouptag", "exchange"]
+        columns = ['strategyname', 'execution_type', "qty", "product_type", "freezequantity", "symbol", "grouptag", "exchange", "lotsize", "capitalperlot"]
         return [{col : i[columns.index(col)] for col in columns} for i in v]
         
     def add_order(self, refno, strategyname, orderid, orderstatus = None, token = None, transactiontype = None, req_qty = None, exec_qty = None, symbol = None, is_done = None, is_exec = None, placed_at = None, recon_at = None, order_desc = None, is_traded = None, requested_price = None, traded_price = None, traded_at = None):
@@ -281,7 +281,7 @@ class Manage_strategies():
         return [{val : i[vals.index(val)] for val in vals} for i in a]
     
     def get_allpositions(self, strategyname):
-        a = self._reader(f"""SELECT * FROM {self.positions} WHERE strategyname = '{strategyname}' AND is_forward = 0""")
+        a = self._reader(f"""SELECT * FROM {self.positions} WHERE strategyname = '{strategyname}' """) #AND is_forward = 0
         vals = ["refno", "strategyname", "tm", "symbol", "price", "traded_price", "positiontype", "qty", "traded_qty", "token", "orderstatus", "is_exec", "is_recon",
                         "is_sqoff", "is_forward", "sent_orders", "exec_orders"]
         return [{val : i[vals.index(val)] for val in vals} for i in a]
@@ -309,16 +309,16 @@ class Manage_strategies():
         self._executor(sql,val)
     
     def get_trades_bystrategy(self, strategyname, startdate, enddate):
-        sql = f"""SELECT strategies_data.grouptag, trades.* FROM trades INNER JOIN strategies_data ON trades.strategyname = {self.strategiesdata}.strategyname
-        WHERE trades.strategyname = '{strategyname}' AND trades.date >= '{str(startdate)}' AND trades.date <= '{str(enddate)}'"""
+        sql = f"""SELECT {self.strategiesdata}.grouptag, {self.trades}.* FROM {self.trades} INNER JOIN {self.strategiesdata} ON trades.strategyname = {self.strategiesdata}.strategyname
+        WHERE {self.trades}.strategyname = '{strategyname}' AND {self.trades}.date >= '{str(startdate)}' AND {self.trades}.date <= '{str(enddate)}'"""
         a = self._reader(sql)
         columns = ["grouptag","id", "strategyname", "entrytime", "exittime", "symbol", "entryprice", "entryprice_executed", "exitprice", "exitprice_executed", "positiontype",
                    "quantity", "token", "date", "exit_reason", "forward_test"]
         return [{val : i[columns.index(val)] for val in columns} for i in a]
         
     def get_trades_bygroup(self, groupname, startdate, enddate):
-        sql = f"""SELECT strategies_data.grouptag, trades.* FROM trades INNER JOIN strategies_data ON trades.strategyname = {self.strategiesdata}.strategyname 
-        WHERE strategies_data.grouptag = '{groupname}' AND trades.date >= '{str(startdate)}' AND DATE <= '{str(enddate)}' """
+        sql = f"""SELECT {self.strategiesdata}.grouptag, {self.trades}.* FROM trades INNER JOIN {self.strategiesdata} ON {self.trades}.strategyname = {self.strategiesdata}.strategyname 
+        WHERE {self.strategiesdata}.grouptag = '{groupname}' AND {self.trades}.date >= '{str(startdate)}' AND {self.trades}.date <= '{str(enddate)}' """
         
         a = self._reader(sql)
         columns = ["grouptag","id", "strategyname", "entrytime", "exittime", "symbol", "entryprice", "entryprice_executed", "exitprice", "exitprice_executed", "positiontype",
@@ -327,13 +327,17 @@ class Manage_strategies():
     
     def get_all_trades(self, startdate, enddate):       
         # sql = f"""SELECT * FROM trades WHERE DATE >= '{str(startdate)}' AND DATE <= '{str(enddate)}' """
-        sql = f"""SELECT strategies_data.grouptag, trades.* FROM trades INNER JOIN strategies_data ON trades.strategyname = {self.strategiesdata}.strategyname 
-        WHERE trades.date >= '{str(startdate)}' AND DATE <= '{str(enddate)}' """
+        sql = f"""SELECT {self.strategiesdata}.grouptag, {self.trades}.* FROM {self.trades} INNER JOIN {self.strategiesdata} ON {self.trades}.strategyname = {self.strategiesdata}.strategyname 
+        WHERE {self.trades}.date >= '{str(startdate)}' AND {self.trades}.date <= '{str(enddate)}' """
         a = self._reader(sql)
         columns = ["grouptag","id", "strategyname", "entrytime", "exittime", "symbol", "entryprice", "entryprice_executed", "exitprice", "exitprice_executed", "positiontype",
                    "quantity", "token", "date", "exit_reason", "forward_test"]
         return [{val : i[columns.index(val)] for val in columns} for i in a]
-        
+    
+    def drop_positions(self):
+        sql = f"""DELETE FROM {self.positions} """
+        self._executor(sql)
+    
     def _executor(self, sqlmsg, val = None):
         db = mysql.connector.connect(host=self.host, user=self.user, password=self.password, database = self.database)
         cursor = db.cursor()
