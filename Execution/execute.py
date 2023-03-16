@@ -504,7 +504,6 @@ class Execution():
     def trade_push(self):
         opentrades = pd.DataFrame()
         trades = pd.DataFrame()
-        
         strategies = list(self.sq.viewall().keys())
         for s in strategies : 
             x = self.sq.get_positions(s)
@@ -566,7 +565,6 @@ class Execution():
                                 ch = True
                                 trades = trades.append(td, ignore_index= True)
                         unchanged = True if ch == False else unchanged
-                    
                     if not n.empty:
                         opentrades = opentrades.append(n)
         

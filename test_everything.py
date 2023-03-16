@@ -9,16 +9,13 @@ from sql_manager.sql_control import Manage_strategies
 import datetime
 import pandas as pd 
 sq = Manage_strategies()
-
 # sq.add_position(12345, "test_NF", 48716, tm = datetime.datetime.now(), symbol = None, price = None, traded_price = None, positiontype = None, qty = None, traded_qty = None, orderstatus = None, is_exec = None, is_recon = None, is_sqoff = None, is_forward = None, sent_orders = None,exec_orders = None)
 # sq.update_position(1235, "test_NF", 48716, tm = datetime.datetime.now())
 # v = sq.get_positions()
 # c = sq.get_orderids(1236, "test_NF", 48716)
-
 a = sq._reader(f"""SELECT {sq.positions}.refno, {sq.orderbook}.orderid, {sq.positions}.strategyname, {sq.positions}.token, {sq.orderbook}.is_exec FROM {sq.orderbook} INNER JOIN {sq.positions} ON {sq.positions}.refno = {sq.orderbook}.refno WHERE {sq.positions}.is_exec = '1' AND {sq.positions}.is_recon = '0' """)
 a = sq.orderswithissues()
 b = sq.positionswithissues()
-
 break
 # sq.add_strategy("test_NF", "Forward", 100, "Delivery", grouptag= "test")
 

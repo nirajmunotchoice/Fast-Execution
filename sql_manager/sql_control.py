@@ -287,7 +287,7 @@ class Manage_strategies():
         return [{val : i[vals.index(val)] for val in vals} for i in a]
         
     def get_allexecpositions(self):
-        a = self._reader(f"""SELECT * FROM {self.positions} WHERE is_exec = '1' AND is_recon = '1'""")
+        a = self._reader(f"""SELECT * FROM {self.positions} WHERE is_exec = '1' AND is_recon = '1' AND is_forward = '0'""")
         vals = ["refno", "strategyname", "tm", "symbol", "price", "traded_price", "positiontype", "qty", "traded_qty", "token", "orderstatus", "is_exec", "is_recon",
                         "is_sqoff", "is_forward", "sent_orders", "exec_orders"]
         return [{val : i[vals.index(val)] for val in vals} for i in a]
