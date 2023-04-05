@@ -407,8 +407,6 @@ snd = Send_alerts()
 
 snd.send_alert("test ALERT")
 
-
-
 a = sq.get_all_trades(datetime.date(2023,1,1), datetime.date(2023,3,5))
 
 for i in a :
@@ -428,3 +426,63 @@ for i in a :
         except: 
             i['slippage']= 0
 
+# =============================================================================
+# Getting tokens, symbols, expiries
+# =============================================================================
+t = ex.duplitoks
+
+symbol = "BANKNIFTY"
+strike = 40000
+typ = "PE"
+
+expires = list(set(t[(t['Symbol'] == symbol) & (t['StrikePrice'] != -1)]['Expiry'].to_list()))
+expires = [datetime.datetime.strptime(i, "%Y-%m-%d").date()  for i in expires if datetime.datetime.strptime(i, "%Y-%m-%d").date()  >= datetime.datetime.now().date()]
+expires.sort()
+expires = [str(i) for i in expires]
+
+exp = expires[0]
+
+import time 
+
+st = time.time()
+toks = t[(t['Symbol'] == symbol) & (t['Expiry'] == exp) & (t['StrikePrice'] != -1)]
+toks['StrikePrice'] = (toks["StrikePrice"]/100).astype(int)
+toks = toks[['Token', "StrikePrice", "OptionType", "Expiry", "MarketLot", "MaxOrderLots"]]
+dic = {"CE" : {}, "PE" : {}}
+for i in range(len(toks)):
+    d = toks.iloc[i]        
+    dic[d['OptionType']][d['StrikePrice']] = {"Token" : d['Token'], "StrikePrice" : d['StrikePrice'], "OptionType" : d['OptionType'], "Expiry" : d['Expiry'], 
+                            "MarketLot" : d['MarketLot'], "MaxOrderLots" : d['MaxOrderLots'], "Symbol": d['SecDesc']}
+ed = time.time()
+print(ed -st)
+
+# =============================================================================
+# FOR FUTURES
+# =============================================================================
+expires = list(set(t[(t['Symbol'] == symbol) & (t['StrikePrice'] == -1)]['Expiry'].to_list()))
+expires = [datetime.datetime.strptime(i, "%Y-%m-%d").date()  for i in expires if datetime.datetime.strptime(i, "%Y-%m-%d").date()  >= datetime.datetime.now().date()]
+expires.sort()
+expires = [str(i) for i in expires]
+
+exp = expires[0]
+toks = t[(t['Symbol'] == symbol) & (t['Expiry'] == exp) & (t['StrikePrice'] == -1)]
+
+dic = []
+for i in range(len(toks)):
+    d = toks.iloc[i]
+    dic.append({"Token" : d['Token'], "Expiry" : d['Expiry'], "Symbol" : d['SecDesc'], "MarketLot" : d['MarketLot'], "MaxOrderLots" : d['MaxOrderLots']})
+
+ex.get_all_toks("BANKNIFTY", "NSEFO", "2023-04-06")
+exchange = "NSEFO"
+toks = t[(t['Symbol'] == symbol) & (t['Expiry'] == exp) & (t['StrikePrice'] != -1) & (t['Exchange'] == exchange)]
+toks['StrikePrice'] = (toks["StrikePrice"]/100).astype(int)
+toks = toks[['Token', "StrikePrice", "OptionType", "Expiry", "MarketLot", "MaxOrderLots", "SecDesc"]]
+dic = {"CE" : {}, "PE" : {}}
+for i in range(len(toks)):
+    try: 
+        d = toks.iloc[i]        
+        dic[d['OptionType']][d['StrikePrice']] = {"Token" : d['Token'], "StrikePrice" : d['StrikePrice'], "OptionType" : d['OptionType'], "Expiry" : d['Expiry'], 
+                                "MarketLot" : d['MarketLot'], "MaxOrderLots" : d['MaxOrderLots'], "Symbol": d['SecDesc']}
+    except Exception as e:
+        print(e)
+        pass

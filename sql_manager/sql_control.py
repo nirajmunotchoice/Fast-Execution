@@ -302,36 +302,50 @@ class Manage_strategies():
         v = self._reader(f"SELECT orderid FROM {self.orderbook} WHERE strategyname = '{strategyname}' AND refno = '{refno}' AND token = '{token}'")
         return v
     
-    def add_trade(self, strategyname, entrytime, symbol, entryprice, entryprice_executed, positiontype, quantity, token, exittime, exitprice, exitprice_executed, exit_reason, date, forward_test = "NO"):
-        sql = f"""INSERT INTO {self.trades} (strategyname, entrytime, symbol, entryprice, entryprice_executed, positiontype, quantity, token, exittime, exitprice, exitprice_executed, exit_reason, date, forward_test) 
-                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
-        val = (strategyname, entrytime, symbol, entryprice, entryprice_executed, positiontype, quantity, token, exittime, exitprice, exitprice_executed, exit_reason, date, forward_test)
+    def add_trade(self, strategyname, entrytime, symbol, entryprice, entryprice_executed, positiontype, quantity, token, exittime, exitprice, exitprice_executed, exit_reason, date, forward_test = "NO", lot_size = 0):
+        sql = f"""INSERT INTO {self.trades} (strategyname, entrytime, symbol, entryprice, entryprice_executed, positiontype, quantity, token, exittime, exitprice, exitprice_executed, exit_reason, date, forward_test, lot_size) 
+                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+        val = (strategyname, entrytime, symbol, entryprice, entryprice_executed, positiontype, quantity, token, exittime, exitprice, exitprice_executed, exit_reason, date, forward_test, lot_size)
         self._executor(sql,val)
     
-    def get_trades_bystrategy(self, strategyname, startdate, enddate):
-        sql = f"""SELECT {self.strategiesdata}.grouptag, {self.trades}.* FROM {self.trades} INNER JOIN {self.strategiesdata} ON trades.strategyname = {self.strategiesdata}.strategyname
-        WHERE {self.trades}.strategyname = '{strategyname}' AND {self.trades}.date >= '{str(startdate)}' AND {self.trades}.date <= '{str(enddate)}'"""
+    def get_trades_bystrategy(self, strategyname, startdate, enddate, inc_forwardtest = False):
+        if not inc_forwardtest : 
+            sql = f"""SELECT {self.strategiesdata}.grouptag, {self.trades}.*, {self.strategiesdata}.capitalperlot FROM {self.trades} INNER JOIN {self.strategiesdata} ON trades.strategyname = {self.strategiesdata}.strategyname
+            WHERE {self.trades}.strategyname = '{strategyname}' AND {self.trades}.date >= '{str(startdate)}' AND {self.trades}.date <= '{str(enddate)}'
+            AND {self.trades}.forward_test = 'NO'"""
+        else: 
+            sql = f"""SELECT {self.strategiesdata}.grouptag, {self.trades}.*, {self.strategiesdata}.capitalperlot FROM {self.trades} INNER JOIN {self.strategiesdata} ON trades.strategyname = {self.strategiesdata}.strategyname
+            WHERE {self.trades}.strategyname = '{strategyname}' AND {self.trades}.date >= '{str(startdate)}' AND {self.trades}.date <= '{str(enddate)}'"""     
         a = self._reader(sql)
         columns = ["grouptag","id", "strategyname", "entrytime", "exittime", "symbol", "entryprice", "entryprice_executed", "exitprice", "exitprice_executed", "positiontype",
-                   "quantity", "token", "date", "exit_reason", "forward_test"]
+                   "quantity", "token", "date", "exit_reason", "forward_test", "lot_size", "capitalperlot"]
         return [{val : i[columns.index(val)] for val in columns} for i in a]
         
-    def get_trades_bygroup(self, groupname, startdate, enddate):
-        sql = f"""SELECT {self.strategiesdata}.grouptag, {self.trades}.* FROM trades INNER JOIN {self.strategiesdata} ON {self.trades}.strategyname = {self.strategiesdata}.strategyname 
-        WHERE {self.strategiesdata}.grouptag = '{groupname}' AND {self.trades}.date >= '{str(startdate)}' AND {self.trades}.date <= '{str(enddate)}' """
-        
+    def get_trades_bygroup(self, groupname, startdate, enddate, inc_forwardtest = False):
+        if not inc_forwardtest : 
+            sql = f"""SELECT {self.strategiesdata}.grouptag, {self.trades}.*, {self.strategiesdata}.capitalperlot FROM trades INNER JOIN {self.strategiesdata} ON {self.trades}.strategyname = {self.strategiesdata}.strategyname 
+            WHERE {self.strategiesdata}.grouptag = '{groupname}' AND {self.trades}.date >= '{str(startdate)}' AND {self.trades}.date <= '{str(enddate)}' 
+            AND {self.trades}.forward_test = 'NO'"""
+        else: 
+            sql = f"""SELECT {self.strategiesdata}.grouptag, {self.trades}.*, {self.strategiesdata}.capitalperlot FROM trades INNER JOIN {self.strategiesdata} ON {self.trades}.strategyname = {self.strategiesdata}.strategyname 
+            WHERE {self.strategiesdata}.grouptag = '{groupname}' AND {self.trades}.date >= '{str(startdate)}' AND {self.trades}.date <= '{str(enddate)}'"""
         a = self._reader(sql)
         columns = ["grouptag","id", "strategyname", "entrytime", "exittime", "symbol", "entryprice", "entryprice_executed", "exitprice", "exitprice_executed", "positiontype",
-                   "quantity", "token", "date", "exit_reason", "forward_test"]
+                   "quantity", "token", "date", "exit_reason", "forward_test", "lot_size", "capitalperlot"]
         return [{val : i[columns.index(val)] for val in columns} for i in a]
-    
-    def get_all_trades(self, startdate, enddate):       
+     
+    def get_all_trades(self, startdate, enddate, inc_forwardtest = False):       
         # sql = f"""SELECT * FROM trades WHERE DATE >= '{str(startdate)}' AND DATE <= '{str(enddate)}' """
-        sql = f"""SELECT {self.strategiesdata}.grouptag, {self.trades}.* FROM {self.trades} INNER JOIN {self.strategiesdata} ON {self.trades}.strategyname = {self.strategiesdata}.strategyname 
-        WHERE {self.trades}.date >= '{str(startdate)}' AND {self.trades}.date <= '{str(enddate)}' """
+        if not inc_forwardtest : 
+            sql = f"""SELECT {self.strategiesdata}.grouptag, {self.trades}.*, {self.strategiesdata}.capitalperlot FROM {self.trades} INNER JOIN {self.strategiesdata} ON {self.trades}.strategyname = {self.strategiesdata}.strategyname 
+            WHERE {self.trades}.date >= '{str(startdate)}' AND {self.trades}.date <= '{str(enddate)}' AND {self.trades}.forward_test = 'NO'"""
+        else: 
+            sql = f"""SELECT {self.strategiesdata}.grouptag, {self.trades}.*, {self.strategiesdata}.capitalperlot FROM {self.trades} INNER JOIN {self.strategiesdata} ON {self.trades}.strategyname = {self.strategiesdata}.strategyname 
+            WHERE {self.trades}.date >= '{str(startdate)}' AND {self.trades}.date <= '{str(enddate)}' """
+      
         a = self._reader(sql)
         columns = ["grouptag","id", "strategyname", "entrytime", "exittime", "symbol", "entryprice", "entryprice_executed", "exitprice", "exitprice_executed", "positiontype",
-                   "quantity", "token", "date", "exit_reason", "forward_test"]
+                   "quantity", "token", "date", "exit_reason", "forward_test", "lot_size", "capitalperlot"]
         return [{val : i[columns.index(val)] for val in columns} for i in a]
     
     def drop_positions(self):

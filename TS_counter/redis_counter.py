@@ -12,9 +12,9 @@ class redis_ts():
     def __init__(self):
         self.dt = datetime.date.today().strftime("%Y%m%d")
         self.r = redis.Redis()
-        val = int(self.dt[-2:] + "00")
-        if self.r.get(f"ts_counter_{self.dt}") == None :   
-            self.r.set(f"ts_counter_{self.dt}", val)
+        val = int(self.dt[-1:] + self.dt[-2:] + "0000")
+        # if self.r.get(f"ts_counter_{self.dt}") == None :   
+        self.r.set(f"ts_counter_{self.dt}", val)
 
     def incr(self):
         return self.r.incr(f"ts_counter_{self.dt}")

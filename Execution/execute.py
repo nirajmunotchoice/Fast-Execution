@@ -18,14 +18,18 @@ from Jiffy.jiffy import *
 import threading
 import copy 
 from alerts.tele_alerts import Send_alerts
+import copy 
+import operator
 
 now = datetime.datetime.now().strftime("%d-%m-%Y")
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(name)s:%(message)s')
-filehandler = logging.FileHandler('execution_log{}.log'.format(now))
+# filehandler = logging.FileHandler('execution_log{}.log'.format(now))
+filehandler = logging.FileHandler(r'Z:\LOGS\{}_logs\{}{}.log'.format(datetime.datetime.now().strftime("%Y%m%d"),"execution_log",now))
 filehandler.setFormatter(formatter)
 logger.addHandler(filehandler)
+
 
 class Execution():
     def __init__(self):
@@ -36,8 +40,9 @@ class Execution():
         self.tokendf = pd.read_csv(config.jiffy_scriptmaster)
         self.tokendf['trdexc'] = self.tokendf.apply(lambda row : True if row['Exchange'] in config.trading_exchange else False, axis = 1)
         self.tokendf = self.tokendf[self.tokendf['trdexc'] == True]
-        self.tokendf = self.tokendf[['Token', 'Segment', "Exchange", "SecDesc"]]
-        self.tokendf[['Token', 'Segment']] = self.tokendf[['Token', 'Segment']].astype(int)
+        self.duplitoks = copy.deepcopy(self.tokendf)
+        self.tokendf = self.tokendf[['Token', 'Segment', "Exchange", "SecDesc","MarketLot", "UnderlyingToken", "Symbol"]]
+        self.tokendf[['Token', 'Segment', 'MarketLot', "UnderlyingToken"]] = self.tokendf[['Token', 'Segment', 'MarketLot', "UnderlyingToken"]].astype(int)
         self.tokendf = self.tokendf.set_index('Token')
         self.recon_threads = {}
         self.trades_process = True
@@ -62,11 +67,23 @@ class Execution():
         return a[0]
     
     def get_segment(self, token, exchange):
-        return self.tokendf[(self.tokendf.index == token) & (self.tokendf['Exchange'] == exchange)].iloc[0]['Segment']
+        if exchange == "NSE" : 
+            return 1 
+        else: 
+            return self.tokendf[(self.tokendf.index == token) & (self.tokendf['Exchange'] == exchange)].iloc[0]['Segment']
     
     def get_symbol(self, token, exchange):
-        return self.tokendf[(self.tokendf.index == token) & (self.tokendf['Exchange'] == exchange)].iloc[0]['SecDesc']
+        if exchange == "NSE" : 
+            return self.tokendf[(self.tokendf['UnderlyingToken'] == token)].iloc[0]['Symbol']
+        else:
+            return self.tokendf[(self.tokendf.index == token) & (self.tokendf['Exchange'] == exchange)].iloc[0]['SecDesc']
     
+    def get_lot_size(self, token):
+        try:
+            return self.tokendf[(self.tokendf.index == token)].iloc[0]['MarketLot']
+        except : 
+            return 0
+         
     def get_orderstatus(self, ob, orderid, token): #Also check qty traded
         # ob = self.get_orderbook()
         for i in ob['Orders']:
@@ -121,7 +138,7 @@ class Execution():
             
             qty = int(orderdict['qty'])
             token = int(orderdict['token'])
-            segment = self.get_segment(token, orderdict['exchange'])
+            segment = 1 if orderdict["exchange"] == "NSE" else self.get_segment(token, orderdict['exchange'])
             try : 
                 orderid = self.jf.placeorder(token, segment, ordertype, transactiontype, qty, price, producttype)
                 print(orderid)
@@ -177,7 +194,7 @@ class Execution():
                             if not c["status"] : 
                                 logger.critical(f"Issue in _order_exec_confirmation in SQL update order - {c} for orderdetail - {orderdetails} for orderid - {i}")
                                 self.sndalert.send_alert(f"Issue in _order_exec_confirmation in SQL update order - {c} for orderdetail - {orderdetails} for orderid - {i}")
-                            
+                             
                 if len(done_ords) == len(orderids):
                     self.recon_threads[orderdetails['reftag']]['is_running'] = False
                 time.sleep(0.5)
@@ -387,11 +404,9 @@ class Execution():
                                       symbol = None, is_done = 0, is_exec = 0, placed_at = None, recon_at = None, order_desc = None
                                       , is_traded = 0, requested_price = orderv['price'], traded_price = None, traded_at = None))
                 else : 
-                    # GIVE ALERT 
-                    # ADD TO LOG FOR ERROR
                     logger.error(f"Error in Orderplacement in dependent_execution Orderid not generated for orderdetails : {orderv}")
                     self.sndalert.send_alert(f"Error in Orderplacement in dependent_execution Orderid not generated for orderdetails : {orderv}")
-                time.sleep(0.1)
+                time.sleep(0.4)
                 
         threads = []
         
@@ -471,15 +486,15 @@ class Execution():
                                      qty = orderdict['qty'], traded_qty = orderdict['qty'], orderstatus = "EXECUTED", is_exec = 1, is_recon = 1, is_sqoff = 0, is_forward = 1, sent_orders = 1
                                      ,exec_orders = 1)
     
-    def get_trades(self, startdate, enddate, strategyname = "", groupname = ""):
+    def get_trades(self, startdate, enddate, strategyname = "", groupname = "", forward_test = False):
         if strategyname == "" and groupname == "": 
-            return self.calculate_trades_pnl(self.sq.get_all_trades(startdate, enddate))
+            return self.calculate_trades_pnl(self.sq.get_all_trades(startdate, enddate, inc_forwardtest = forward_test))
     
         elif strategyname != "" : 
-            return self.calculate_trades_pnl(self.sq.get_trades_bystrategy(strategyname,startdate, enddate))
+            return self.calculate_trades_pnl(self.sq.get_trades_bystrategy(strategyname,startdate, enddate, inc_forwardtest = forward_test))
     
         elif groupname != "" : 
-            return self.calculate_trades_pnl(self.sq.get_trades_bygroup(groupname, startdate, enddate))
+            return self.calculate_trades_pnl(self.sq.get_trades_bygroup(groupname, startdate, enddate, inc_forwardtest = forward_test))
             
     def calculate_trades_pnl(self, a):
         for i in a :
@@ -500,7 +515,46 @@ class Execution():
                     i['slippage']= 0
         
         return a
-        
+    
+    def get_exp(self,symbol, exchange,instrument = "OPT"):
+        t = self.duplitoks
+        if instrument == "OPT" : 
+            expires = list(set(t[(t['Symbol'] == symbol) & (t['StrikePrice'] != -1) & (t['Exchange'] == exchange)]['Expiry'].to_list()))
+        elif instrument == "FUT" : 
+            expires = list(set(t[(t['Symbol'] == symbol) & (t['StrikePrice'] == -1) & (t['Exchange'] == exchange)]['Expiry'].to_list()))
+        else: 
+            raise Exception("Wrong Instrument")
+            
+        expires = [datetime.datetime.strptime(i, "%Y-%m-%d").date()  for i in expires if datetime.datetime.strptime(i, "%Y-%m-%d").date()  >= datetime.datetime.now().date()]
+        expires.sort()
+        expires = [str(i) for i in expires]
+        return expires
+    
+    def get_all_toks(self,symbol, exchange, exp, instrument = "OPT"):
+        t = self.duplitoks
+        if instrument == "OPT" : 
+            toks = t[(t['Symbol'] == symbol) & (t['Expiry'] == exp) & (t['StrikePrice'] != -1) & (t['Exchange'] == exchange)]
+            toks['StrikePrice'] = (toks["StrikePrice"]/100).astype(int)
+            toks = toks[['Token', "StrikePrice", "OptionType", "Expiry", "MarketLot", "MaxOrderLots", "SecDesc"]]
+            dic = {"CE" : {}, "PE" : {}}
+            for i in range(len(toks)):
+                try: 
+                    d = toks.iloc[i]        
+                    dic[d['OptionType']][int(d['StrikePrice'])] = {"Token" : int(d['Token']), "StrikePrice" : int(d['StrikePrice']), "OptionType" : d['OptionType'], "Expiry" : d['Expiry'], 
+                                            "MarketLot" : int(d['MarketLot']), "MaxOrderLots" : int(d['MaxOrderLots']), "Symbol": d['SecDesc']}
+                except: 
+                    pass
+                
+        elif instrument == "FUT" : 
+            toks = t[(t['Symbol'] == symbol) & (t['Expiry'] == exp) & (t['StrikePrice'] == -1) & (t['Exchange'] == exchange)]
+            dic = []
+            for i in range(len(toks)):
+                d = toks.iloc[i]
+                dic.append({"Token" : int(d['Token']), "Expiry" : d['Expiry'], "Symbol" : d['SecDesc'], "MarketLot" : int(d['MarketLot']), "MaxOrderLots" : int(d['MaxOrderLots'])})
+        else: 
+            raise Exception("Wrong Instrument")
+        return dic
+    
     def trade_push(self):
         opentrades = pd.DataFrame()
         trades = pd.DataFrame()
@@ -570,6 +624,7 @@ class Execution():
         
         for i in range(len(trades)):
             c = trades.iloc[i]    
+            lz = self.get_lot_size(c['token'])
             self.sq.add_trade(c['strategyname'], c['entrytime'], c['symbol'], c['entryprice'], c['entryprice_executed'], c['positiontype'], int(c['quantity']), int(c['token']), 
                          c['exittime'], c['exitprice'], c['exitprice_executed'], "", c['date'], forward_test = c['forward_test'])
         

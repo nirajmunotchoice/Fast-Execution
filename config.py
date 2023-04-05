@@ -8,4 +8,4 @@ sql_port = 3306
 sql_database = "test_struct"
 sql_user = "root"
 sql_password = "Choice@123"
-trading_exchange = ["NSEFO"] #['MCX', "NCDEX", "NSECDS", "NSEFO"]
+trading_exchange = ["NSEFO"] #['MCX', "NCDEX", "NSECDS", "NSEFO"] 

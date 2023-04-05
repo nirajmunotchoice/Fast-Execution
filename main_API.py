@@ -34,7 +34,8 @@ formatter = RequestFormatter(
     '[%(asctime)s] %(remote_addr)s requested %(url)s | %(jsonresp)s: '
     '%(levelname)s in %(module)s: %(message)s')
 # logging.Formatter('%(asctime)s:%(levelname)s:%(name)s:%(message)s')
-filehandler = logging.FileHandler('API_{}.log'.format(now))
+# filehandler = logging.FileHandler('API_{}.log'.format(now))
+filehandler = logging.FileHandler(r'Z:\LOGS\{}_logs\{}{}.log'.format(datetime.datetime.now().strftime("%Y%m%d"),"API_",now))
 filehandler.setFormatter(formatter)
 logger.addHandler(filehandler)
  
@@ -325,7 +326,7 @@ def orderswithissues():
     except Exception as e : 
         logger.exception("error")
         return {"error":True, "data" : [], "status" : str(e)} 
-
+ 
 @app.route("/positionswithissues", methods = ['GET'])
 def positionswithissues():
     try: 
@@ -421,12 +422,35 @@ def push_trades():
 def trades():
     try : 
         data = request.json
-        trades = Ex.get_trades(data['startdate'], data['enddate'], strategyname = data['strategyname'], groupname = data['groupname'])
+        forwardtest = False if data.get('forwardtest') == None or not data.get('forwardtest') else True
+        trades = Ex.get_trades(data['startdate'], data['enddate'], strategyname = data['strategyname'], groupname = data['groupname'], forward_test= forwardtest)
+        logger.debug("trades")
         return {"error":False, "data" : trades, "status" : "Data Received"} 
     except Exception as e :  
         logger.exception("error")
         return {"error":True, "data" : [], "status" : str(e)} 
 
+@app.route("/exps")
+def get_exp():
+    try: 
+        data = request.json
+        return {"error" : False, "data" : Ex.get_exp(symbol = data['symbol'], exchange = data['exchange'],instrument = data['instrument']), "status" : "Data Received"}
+    
+    except Exception as e: 
+        logger.exception("error")
+        return {"error":True, "data" : [], "status" : str(e)} 
+    
+@app.route("/toks")
+def get_toks():
+    try: 
+        data = request.json
+        return {"error" : False, "data" : Ex.get_all_toks(symbol = data['symbol'], exchange = data['exchange'], exp = data['exp'], instrument = data['instrument']), "status" : "Data Received"}
+    except Exception as e: 
+        logger.exception("error")
+        return {"error":True, "data" : [], "status" : str(e)} 
+    
+    
+    
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5003)
 
